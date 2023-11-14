@@ -65,7 +65,7 @@ Merging:TMS              = -1.0
 ! of the hard process. This guess is prone to errors if the desired hard 
 ! process is complicated (i.e. contains light partons). The user should
 ! then be wary of suspicious error messages in the Pythia log file. 
-Merging:Process          = guess
+Merging:Process          = <set_by_user>
 ! A value of -1 means that it is automatically guessed by MadGraph.
 ! It is however always safer to explicitly set it.
 Merging:nJetMax  		 = -1

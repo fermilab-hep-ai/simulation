@@ -17,6 +17,9 @@ seed=$3
 ${MADGRAPH}/bin/mg5_aMC ./processes/proc_${proc}.dat
 
 cp ./cards/* ./events/${proc}/Cards/
+if test -f ./processes/run_${proc}.dat; then
+  cp ./processes/run_${proc}.dat ./events/${proc}/Cards/run_card.dat
+fi
 
 sed -i -e "s@_NEVENTS_@$nevts@g" ./events/${proc}/Cards/run_card.dat
 sed -i -e "s@_NEVENTS_@$nevts@g" ./events/${proc}/Cards/launch.dat

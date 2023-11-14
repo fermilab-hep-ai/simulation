@@ -40,9 +40,9 @@ NNPDF31_nnlo_hessian_pdfas PDF set, member #0, version 1; LHAPDF ID = 306000
   Internal Params
   ---------------------------------
   
- mdl_CKM3x3 =    1.0000000000000000     
- mdl_conjg__CKM3x3 =    1.0000000000000000     
  mdl_conjg__CKM1x1 =    1.0000000000000000     
+ mdl_conjg__CKM3x3 =    1.0000000000000000     
+ mdl_CKM3x3 =    1.0000000000000000     
  mdl_complexi =                (0.0000000000000000,1.0000000000000000)
  mdl_MZ__exp__2 =    8315.2513440000002     
  mdl_MZ__exp__4 =    69143404.913893804     
