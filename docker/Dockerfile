@@ -165,6 +165,7 @@ RUN cd /usr/local && \
 RUN sed -i '/fastjet =/s/^# //g' /usr/local/MG5_aMC_v${MG_VERSION_}/input/mg5_configuration.txt && \
     sed -i '/lhapdf_py3 =/s/^# //g' /usr/local/MG5_aMC_v${MG_VERSION_}/input/mg5_configuration.txt && \
     sed -i 's|# pythia8_path.*|pythia8_path = /usr/local|g' /usr/local/MG5_aMC_v${MG_VERSION_}/input/mg5_configuration.txt && \
+    sed -i 's|# delphes_path.*|delphes_path = /usr/local/share/delphes/delphes|g' /usr/local/MG5_aMC_v${MG_VERSION_}/input/mg5_configuration.txt && \
     sed -i '/mg5amc_py8_interface_path =/s/^# //g' /usr/local/MG5_aMC_v${MG_VERSION_}/input/mg5_configuration.txt && \
     sed -i 's|# eps_viewer.*|eps_viewer = '$(command -v ghostscript)'|g' /usr/local/MG5_aMC_v${MG_VERSION_}/input/mg5_configuration.txt && \
     sed -i 's|# fortran_compiler.*|fortran_compiler = '$(command -v gfortran)'|g' /usr/local/MG5_aMC_v${MG_VERSION_}/input/mg5_configuration.txt
