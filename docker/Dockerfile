@@ -231,6 +231,7 @@ RUN cd /usr/local/MG5_aMC_v${MG_VERSION_}/vendor/StdHEP && \
 # install a PDF sets we commonly use
 RUN lhapdf install NNPDF30_nlo_as_0118
 RUN lhapdf install NNPDF23_nlo_as_0119_qed
+RUN lhapdf install NNPDF23_lo_as_0130_qed
 
 # make it easier for users to modify things in the MG installation later
 RUN chown -R root:root /usr/local/MG5_aMC_v${MG_VERSION_}/
