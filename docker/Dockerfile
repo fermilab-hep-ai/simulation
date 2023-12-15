@@ -190,7 +190,7 @@ RUN cp /root/.profile ${HOME}/.profile && \
     echo 'export PATH=/usr/local/MG5_aMC_v${MG_VERSION_}/bin:$PATH' >> ${HOME}/.bashrc && \
     echo 'alias ls="ls -ltrh --color"' >> ${HOME}/.bashrc && \
     python3 -m pip install --upgrade --no-cache-dir pip setuptools wheel && \
-    python3 -m pip install --no-cache-dir six numpy
+    python3 -m pip install --no-cache-dir six numpy matplotlib
 
 ENV PYTHONPATH=/usr/local/lib:$PYTHONPATH
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
@@ -228,10 +228,12 @@ RUN cd /usr/local/MG5_aMC_v${MG_VERSION_}/vendor/IREGI/src && \
 RUN cd /usr/local/MG5_aMC_v${MG_VERSION_}/vendor/StdHEP && \
     make
 
-# install a PDF sets we commonly use
-RUN lhapdf install NNPDF30_nlo_as_0118
-RUN lhapdf install NNPDF23_nlo_as_0119_qed
-RUN lhapdf install NNPDF23_lo_as_0130_qed
+# install PDF sets we commonly use
+RUN python3 /usr/local/bin/lhapdf list --pdfdir /usr/local/share/LHAPDF --listdir /usr/local/share/LHAPDF
+RUN python3 /usr/local/bin/lhapdf install NNPDF30_nlo_as_0118 --pdfdir /usr/local/share/LHAPDF --listdir /usr/local/share/LHAPDF
+RUN python3 /usr/local/bin/lhapdf install NNPDF23_nlo_as_0119_qed --pdfdir /usr/local/share/LHAPDF --listdir /usr/local/share/LHAPDF
+RUN python3 /usr/local/bin/lhapdf install NNPDF23_lo_as_0130_qed --pdfdir /usr/local/share/LHAPDF --listdir /usr/local/share/LHAPDF
+RUN python3 /usr/local/bin/lhapdf install NNPDF31_nnlo_hessian_pdfas --pdfdir /usr/local/share/LHAPDF --listdir /usr/local/share/LHAPDF
 
 # make it easier for users to modify things in the MG installation later
 RUN chown -R root:root /usr/local/MG5_aMC_v${MG_VERSION_}/
