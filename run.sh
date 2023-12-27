@@ -14,7 +14,7 @@ seed=$3
 
 # run MadGraph event generation
 
-${MADGRAPH}/bin/mg5_aMC ./processes/proc_${proc}.dat
+/usr/local/MG5_aMC_v3_5_1/bin/mg5_aMC ./processes/proc_${proc}.dat
 
 cp ./cards/* ./events/${proc}/Cards/
 if test -f ./processes/run_${proc}.dat; then
