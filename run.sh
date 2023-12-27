@@ -13,7 +13,6 @@ seed=$3
 
 
 # run MadGraph event generation
-
 /usr/local/MG5_aMC_v3_5_1/bin/mg5_aMC ./processes/proc_${proc}.dat
 
 cp ./cards/* ./events/${proc}/Cards/
@@ -27,3 +26,5 @@ sed -i -e "s@_PileUpFile_@$workdir/MinBias_100k.pileup@g" ./events/${proc}/Cards
 sed -i -e "s@_ISEED_@$seed@g" ./events/${proc}/Cards/run_card.dat
 
 events/${proc}/bin/madevent ./events/${proc}/Cards/launch.dat
+# make validation plots
+python3 ./make_plots.py -p ./events/${proc}/
