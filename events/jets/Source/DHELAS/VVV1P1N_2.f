@@ -11,11 +11,11 @@ C
       REAL*8 P1(0:3)
       REAL*8 P2(0:3)
       REAL*8 P3(0:3)
-      COMPLEX*16 TMP10
       COMPLEX*16 TMP11
-      COMPLEX*16 TMP3
-      COMPLEX*16 TMP5
+      COMPLEX*16 TMP12
+      COMPLEX*16 TMP4
       COMPLEX*16 TMP7
+      COMPLEX*16 TMP8
       COMPLEX*16 V1(*)
       COMPLEX*16 V2(6)
       COMPLEX*16 V3(*)
@@ -33,19 +33,19 @@ C
       P2(1) = -DBLE(V2(2))
       P2(2) = -DIMAG(V2(2))
       P2(3) = -DIMAG(V2(1))
-      TMP10 = (V1(3)*P2(0)-V1(4)*P2(1)-V1(5)*P2(2)-V1(6)*P2(3))
-      TMP11 = (V1(3)*P3(0)-V1(4)*P3(1)-V1(5)*P3(2)-V1(6)*P3(3))
-      TMP3 = (V1(3)*V3(3)-V1(4)*V3(4)-V1(5)*V3(5)-V1(6)*V3(6))
-      TMP5 = (V3(3)*P1(0)-V3(4)*P1(1)-V3(5)*P1(2)-V3(6)*P1(3))
-      TMP7 = (V3(3)*P2(0)-V3(4)*P2(1)-V3(5)*P2(2)-V3(6)*P2(3))
-      V2(3)= COUP*(TMP3*(+CI*(P1(0))-CI*(P3(0)))+(V1(3)*(-CI*(TMP5)+CI
-     $ *(TMP7))+V3(3)*(-CI*(TMP10)+CI*(TMP11))))
-      V2(4)= COUP*(TMP3*(-CI*(P1(1))+CI*(P3(1)))+(V1(4)*(+CI*(TMP5)-CI
-     $ *(TMP7))+V3(4)*(+CI*(TMP10)-CI*(TMP11))))
-      V2(5)= COUP*(TMP3*(-CI*(P1(2))+CI*(P3(2)))+(V1(5)*(+CI*(TMP5)-CI
-     $ *(TMP7))+V3(5)*(+CI*(TMP10)-CI*(TMP11))))
-      V2(6)= COUP*(TMP3*(-CI*(P1(3))+CI*(P3(3)))+(V1(6)*(+CI*(TMP5)-CI
-     $ *(TMP7))+V3(6)*(+CI*(TMP10)-CI*(TMP11))))
+      TMP11 = (P2(0)*V1(3)-P2(1)*V1(4)-P2(2)*V1(5)-P2(3)*V1(6))
+      TMP12 = (V1(3)*P3(0)-V1(4)*P3(1)-V1(5)*P3(2)-V1(6)*P3(3))
+      TMP4 = (V3(3)*V1(3)-V3(4)*V1(4)-V3(5)*V1(5)-V3(6)*V1(6))
+      TMP7 = (V3(3)*P1(0)-V3(4)*P1(1)-V3(5)*P1(2)-V3(6)*P1(3))
+      TMP8 = (V3(3)*P2(0)-V3(4)*P2(1)-V3(5)*P2(2)-V3(6)*P2(3))
+      V2(3)= COUP*(TMP4*(+CI*(P1(0))-CI*(P3(0)))+(V1(3)*(-CI*(TMP7)+CI
+     $ *(TMP8))+V3(3)*(-CI*(TMP11)+CI*(TMP12))))
+      V2(4)= COUP*(TMP4*(-CI*(P1(1))+CI*(P3(1)))+(V1(4)*(+CI*(TMP7)-CI
+     $ *(TMP8))+V3(4)*(+CI*(TMP11)-CI*(TMP12))))
+      V2(5)= COUP*(TMP4*(-CI*(P1(2))+CI*(P3(2)))+(V1(5)*(+CI*(TMP7)-CI
+     $ *(TMP8))+V3(5)*(+CI*(TMP11)-CI*(TMP12))))
+      V2(6)= COUP*(TMP4*(-CI*(P1(3))+CI*(P3(3)))+(V1(6)*(+CI*(TMP7)-CI
+     $ *(TMP8))+V3(6)*(+CI*(TMP11)-CI*(TMP12))))
       END
 
 
