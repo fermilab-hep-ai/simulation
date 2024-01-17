@@ -31,4 +31,4 @@ sed -i -e "s@_ISEED_@$seed@g" ${outdir}/${proc}/Cards/run_card.dat
 
 ${outdir}/${proc}/bin/madevent ${outdir}/${proc}/Cards/launch.dat
 # make validation plots
-# python3 ./make_plots.py -p ${outdir}/${proc}/
+python3 ./make_plots.py -p ${outdir}/${proc}/
