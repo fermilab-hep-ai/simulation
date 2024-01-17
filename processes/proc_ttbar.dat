@@ -29,4 +29,4 @@ define vl~ = ve~ vm~ vt~
 
 generate p p > t t~
 
-output events/ttbar
+output _OUTDIR_/ttbar

@@ -156,12 +156,7 @@ class gensym(object):
             #sym_input = "%(points)d %(iterations)d %(accuracy)f \n" % self.opts
             (stdout, _) = p.communicate(''.encode())
             stdout = stdout.decode('ascii',errors='ignore')
-            if stdout:
-                nb_channel = max([math.floor(float(d)) for d in stdout.split()])
-            else:
-                for matrix_file in misc.glob('matrix*orig.f', Pdir):
-                    files.cp(matrix_file, matrix_file.replace('orig','optim'))
-                continue # bypass bad process
+            nb_channel = max([math.floor(float(d)) for d in stdout.split()])
             
             self.cmd.compile(['madevent_forhel'], cwd=Pdir)
             if not os.path.exists(pjoin(Pdir, 'madevent_forhel')):

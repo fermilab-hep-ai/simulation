@@ -23,12 +23,14 @@
 # Number of events and rnd seed                                      *
 # Warning: Do not generate more than 1M events in a single run       *
 #*********************************************************************
-  1000	= nevents ! Number of unweighted events requested 
+  100	= nevents ! Number of unweighted events requested 
   0	= iseed ! rnd seed (0=assigned automatically=default))
 #*********************************************************************
 # Collider type and energy                                           *
-# lpp: 0=No PDF, 1=proton, -1=antiproton, 2=photon from proton,      *
-#                3=photon from electron, 4=photon from muon          *
+# lpp: 0=No PDF, 1=proton, -1=antiproton,                            *
+#                2=elastic photon of proton/ion beam                 *
+#             +/-3=PDF of electron/positron beam                     *
+#             +/-4=PDF of muon/antimuon beam                         *
 #*********************************************************************
   1	= lpp1 ! beam 1 type 
   1	= lpp2 ! beam 2 type
@@ -37,9 +39,15 @@
 # To see polarised beam options: type "update beam_pol"
 
 #*********************************************************************
-# PDF CHOICE: this automatically fixes also alpha_s and its evol.    *
+# PDF CHOICE: this automatically fixes alpha_s and its evol.         *
+# pdlabel: lhapdf=LHAPDF (installation needed) [1412.7420]           *
+#          iww=Improved Weizsaecker-Williams Approx.[hep-ph/9310350] *
+#          eva=Effective W/Z/A Approx.       [2111.02442]            *
+#          edff=EDFF in gamma-UPC            [eq.(11) in 2207.03012] *
+#          chff=ChFF in gamma-UPC            [eq.(13) in 2207.03012] *
+#          none=No PDF, same as lhapdf with lppx=0                   *
 #*********************************************************************
-  lhapdf	= pdlabel ! PDF set                                     
+  lhapdf	= pdlabel ! PDF set 
   306000	= lhaid ! if pdlabel=lhapdf, this is the lhapdf number
 # To see heavy ion options: type "update ion_pdf"
 #*********************************************************************
@@ -52,23 +60,24 @@
   91.188	= dsqrt_q2fact2 ! fixed fact scale for pdf2
   -1	= dynamical_scale_choice ! Choose one of the preselected dynamical choices
   1.0	= scalefact ! scale factor for event-by-event scales
+
+ 
 #*********************************************************************
 # Type and output format
 #*********************************************************************
   False	= gridpack !True = setting up the grid pack
   -1.0	= time_of_flight ! threshold (in mm) below which the invariant livetime is not written (-1 means not written)
   average	= event_norm ! average/sum. Normalization of the weight in the LHEF
-
 #*********************************************************************
 # Matching parameter (MLM only)
 #*********************************************************************
-  0	= ickkw ! 0 no matching, 1 MLM
-  1.0	= alpsfact ! scale factor for QCD emission vx
-  False	= chcluster ! cluster only according to channel diag
-  4	= asrwgtflavor ! highest quark flavor for a_s reweight
-  False	= auto_ptj_mjj ! Automatic setting of ptj and mjj if xqcut >0
+ 0 = ickkw            ! 0 no matching, 1 MLM
+ 1.0 = alpsfact         ! scale factor for QCD emission vx
+ False = chcluster        ! cluster only according to channel diag
+ 4 = asrwgtflavor     ! highest quark flavor for a_s reweight
+ False  = auto_ptj_mjj  ! Automatic setting of ptj and mjj if xqcut >0
                                    ! (turn off for VBF and single top processes)
-  0.0	= xqcut ! minimum kt jet measure between partons
+ 0.0   = xqcut   ! minimum kt jet measure between partons
 
 
 #*********************************************************************
@@ -83,15 +92,14 @@
 			     ! 2 is new strategy (using only the denominator)
 # To see advanced option for Phase-Space optimization: type "update psoptim"			     
 #*********************************************************************
-# Generation bias, check the wiki page below for more information:   *
-#  'cp3.irmp.ucl.ac.be/projects/madgraph/wiki/LOEventGenerationBias' *
+# Customization (custom cuts/scale/bias/...)                         *
+# list of files containing fortran function that overwrite default   *
 #*********************************************************************
-  None	= bias_module ! Bias type of bias, [None, ptj_bias, -custom_folder-]
-  {}	= bias_parameters ! Specifies the parameters of the module.
-#
+  	= custom_fcts ! List of files containing user hook function
 #*******************************                                                 
 # Parton level cuts definition *
-#*******************************                                     
+#*******************************
+  0.0	= dsqrt_shat ! minimal shat for full process
 #                                                                    
 #
 #*********************************************************************
@@ -107,20 +115,19 @@
   -1.0	= ptjmax ! maximum pt for the jets
   {}	= pt_min_pdg ! pt cut for other particles (use pdg code). Applied on particle and anti-particle
   {}	= pt_max_pdg ! pt cut for other particles (syntax e.g. {6: 100, 25: 50}) 
-
 #*********************************************************************
 # Minimum and maximum E's (in the center of mass frame)              *
 #*********************************************************************
-  0.0	= ej ! minimum E for the jets
-  0.0	= eb ! minimum E for the b
-  0.0	= ea ! minimum E for the photons
-  0.0	= el ! minimum E for the charged leptons
-  -1.0	= ejmax ! maximum E for the jets
-  -1.0	= ebmax ! maximum E for the b
-  -1.0	= eamax ! maximum E for the photons
-  -1.0	= elmax ! maximum E for the charged leptons
-  {}	= e_min_pdg ! E cut for other particles (use pdg code). Applied on particle and anti-particle
-  {}	= e_max_pdg ! E cut for other particles (syntax e.g. {6: 100, 25: 50})
+  0.0  = ej     ! minimum E for the jets
+  0.0  = eb     ! minimum E for the b
+  0.0  = ea     ! minimum E for the photons
+  0.0  = el     ! minimum E for the charged leptons
+  -1.0   = ejmax ! maximum E for the jets
+ -1.0   = ebmax ! maximum E for the b
+ -1.0   = eamax ! maximum E for the photons
+ -1.0   = elmax ! maximum E for the charged leptons
+ {} = e_min_pdg ! E cut for other particles (use pdg code). Applied on particle and anti-particle
+ {} = e_max_pdg ! E cut for other particles (syntax e.g. {6: 100, 25: 50})
 
 #*********************************************************************
 # Maximum and minimum absolute rapidity (for max, -1 means no cut)   *
@@ -180,93 +187,89 @@
 #
   systematics	= systematics_program ! none, systematics [python], SysCalc [depreceted, C++]
   ['--mur=0.5,1,2', '--muf=0.5,1,2', '--pdf=errorset']	= systematics_arguments ! see: https://cp3.irmp.ucl.ac.be/projects/madgraph/wiki/Systematics#Systematicspythonmodule
-# Syscalc is deprecated but to see the associate options type'update syscalc'
 #***********************************************************************
 # Turn on either the ktdurham or ptlund cut to activate                *
 # CKKW(L) merging with Pythia8 [arXiv:1410.3012, arXiv:1109.4829]      *
 #***********************************************************************
-  -1.0	= ktdurham 
-  0.4	= dparameter 
-  -1.0	= ptlund 
-  1, 2, 3, 4, 5, 6, 21, 82	= pdgs_for_merging_cut ! PDGs for two cuts above
+ -1.0  =  ktdurham
+ 0.4   =  dparameter
+ -1.0  =  ptlund
+ [1, 2, 3, 4, 5, 6, 21, 82]  =  pdgs_for_merging_cut ! PDGs for two cuts above
 #********************************************************************* 
 #  Additional hidden parameters
 #*********************************************************************
-  0.0	= ptgmin # hidden_parameter
-  -1.0	= drbjmax # hidden_parameter
   -1.0	= etab # hidden_parameter
-  -1.0	= ptl4max # hidden_parameter
-  -1.0	= etaa # hidden_parameter
-  -1.0	= drblmax # hidden_parameter
-  -1.0	= ptlmax # hidden_parameter
-  1.0	= epsgamma # hidden_parameter
-  0.0	= mmaa # hidden_parameter
-  3.0	= lhe_version # hidden_parameter
-  0.0	= mmbb # hidden_parameter
-  -1.0	= ptllmax # hidden_parameter
-  0.0	= ptl2min # hidden_parameter
-  False	= cut_decays # hidden_parameter
-  0.0	= ptl3min # hidden_parameter
-  0.0	= misset # hidden_parameter
   0.0	= mmll # hidden_parameter
-  0.0	= etaamin # hidden_parameter
-  0.0	= xpta # hidden_parameter
-  0.0	= drbl # hidden_parameter
-  -1.0	= draamax # hidden_parameter
-  -1.0	= mmbbmax # hidden_parameter
-  0.0	= drab # hidden_parameter
-  -1.0	= dralmax # hidden_parameter
-  -1.0	= drllmax # hidden_parameter
-  -1.0	= ptj3max # hidden_parameter
-  0.0	= ht3min # hidden_parameter
-  0.0	= ptheavy # this cut apply on particle heavier than 10 GeV
-  0.0	= drbb # hidden_parameter
-  0.0	= draa # hidden_parameter
-  -1.0	= ptl # hidden_parameter
-  True	= clusinfo # hidden_parameter
-  0.0	= etalmin # hidden_parameter
-  0.0	= etajmin # hidden_parameter
-  0.0	= ptllmin # hidden_parameter
-  -1.0	= mmnlmax # hidden_parameter
-  0.0	= drjl # hidden_parameter
-  -1.0	= drabmax # hidden_parameter
-  -1.0	= ht2max # hidden_parameter
   0.0	= ptl4min # hidden_parameter
-  0.4	= r0gamma # hidden_parameter
-  0.0	= etabmin # hidden_parameter
+  -1.0	= draamax # hidden_parameter
+  -1.0	= ptl1max # hidden_parameter
+  -1.0	= ht4max # hidden_parameter
+  0.0	= mmbb # hidden_parameter
+  0.0	= ptj4min # hidden_parameter
+  True	= clusinfo # hidden_parameter
+  -1.0	= ptbmax # hidden_parameter
+  0.0	= dral # hidden_parameter
+  0.0	= xptl # hidden_parameter
+  0.0	= misset # hidden_parameter
+  -1.0	= etal # hidden_parameter
+  -1.0	= drabmax # hidden_parameter
+  True	= isoem # hidden_parameter
+  0.0	= ptheavy # this cut apply on particle heavier than 10 GeV
+  -1.0	= drblmax # hidden_parameter
+  {}	= bias_parameters # hidden_parameter
+  0.0	= ptl1min # hidden_parameter
+  0.0	= ht2min # hidden_parameter
+  -1.0	= drbbmax # hidden_parameter
+  None	= bias_module # hidden_parameter
+  0.0	= mmaa # hidden_parameter
+  1.0	= epsgamma # hidden_parameter
+  0.0	= drbj # hidden_parameter
+  -1.0	= mmnlmax # hidden_parameter
+  -1.0	= drbjmax # hidden_parameter
+  -1.0	= mmbbmax # hidden_parameter
+  0.0	= xptb # hidden_parameter
+  3.0	= lhe_version # hidden_parameter
   -1.0	= ptl2max # hidden_parameter
   -1.0	= mmllmax # hidden_parameter
-  -1.0	= missetmax # hidden_parameter
-  0.0	= drbj # hidden_parameter
-  -1.0	= drjlmax # hidden_parameter
-  -1.0	= ptl3max # hidden_parameter
+  0.0	= etaamin # hidden_parameter
   5.0	= pta # hidden_parameter
-  -1.0	= etal # hidden_parameter
-  0.0	= ptb # hidden_parameter
-  0.0	= mmnl # hidden_parameter
-  0.01	= drll # hidden_parameter
-  0.0	= ptj3min # hidden_parameter
-  0.0	= ptj4min # hidden_parameter
-  0.0	= xptb # hidden_parameter
-  -1.0	= ht3max # hidden_parameter
-  0.0	= ht4min # hidden_parameter
-  0.0	= xptl # hidden_parameter
-  -1.0	= ptl1max # hidden_parameter
-  -1.0	= drajmax # hidden_parameter
-  0.0	= dral # hidden_parameter
-  -1.0	= mmaamax # hidden_parameter
-  1.0	= xn # hidden_parameter
-  -1.0	= ptbmax # hidden_parameter
-  -1.0	= ptj4max # hidden_parameter
-  0.0	= ht2min # hidden_parameter
-  -1.0	= ht4max # hidden_parameter
+  -1.0	= drjlmax # hidden_parameter
+  -1.0	= dralmax # hidden_parameter
+  -1.0	= drllmax # hidden_parameter
   -1.0	= ptamax # hidden_parameter
+  -1.0	= ptl # hidden_parameter
+  0.01	= drll # hidden_parameter
+  0.0	= etajmin # hidden_parameter
+  0.0	= etalmin # hidden_parameter
+  -1.0	= ptj4max # hidden_parameter
+  0.0	= ptgmin # hidden_parameter
+  0.0	= drjl # hidden_parameter
+  0.0	= drab # hidden_parameter
+  -1.0	= ht3max # hidden_parameter
+  0.0	= ptj3min # hidden_parameter
+  -1.0	= mmaamax # hidden_parameter
+  0.4	= r0gamma # hidden_parameter
+  0.0	= ptl3min # hidden_parameter
+  -1.0	= ptlmax # hidden_parameter
+  0.0	= ptb # hidden_parameter
+  -1.0	= ptl4max # hidden_parameter
+  0.0	= drbl # hidden_parameter
+  -1.0	= etaa # hidden_parameter
+  0.0	= mmnl # hidden_parameter
+  -1.0	= ptllmax # hidden_parameter
+  0.0	= etabmin # hidden_parameter
+  0.0	= ptl2min # hidden_parameter
+  1.0	= xn # hidden_parameter
+  0.0	= draa # hidden_parameter
+  -1.0	= ptj3max # hidden_parameter
   0.0	= draj # hidden_parameter
-  0.0	= ptl1min # hidden_parameter
-  -1.0	= drbbmax # hidden_parameter
-  True	= isoem # hidden_parameter
-
-#***********************************************************************
-# Turn on either the ktdurham or ptlund cut to activate                *
-# CKKW(L) merging with Pythia8 [arXiv:1410.3012, arXiv:1109.4829]      *
-#***********************************************************************
+  -1.0	= ht2max # hidden_parameter
+  False	= cut_decays # hidden_parameter
+  -1.0	= drajmax # hidden_parameter
+  0.0	= ht4min # hidden_parameter
+  0.0	= ht3min # hidden_parameter
+  -1.0	= ptl3max # hidden_parameter
+  0.0	= ptllmin # hidden_parameter
+  -1.0	= missetmax # hidden_parameter
+  0.0	= xpta # hidden_parameter
+  0.0	= drbb # hidden_parameter

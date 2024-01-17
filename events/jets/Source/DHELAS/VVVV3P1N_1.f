@@ -7,18 +7,18 @@ C
       COMPLEX*16 CI
       PARAMETER (CI=(0D0,1D0))
       COMPLEX*16 COUP
-      COMPLEX*16 TMP1
-      COMPLEX*16 TMP12
+      COMPLEX*16 TMP2
+      COMPLEX*16 TMP5
       COMPLEX*16 V1(6)
       COMPLEX*16 V2(*)
       COMPLEX*16 V3(*)
       COMPLEX*16 V4(*)
-      TMP1 = (V3(3)*V2(3)-V3(4)*V2(4)-V3(5)*V2(5)-V3(6)*V2(6))
-      TMP12 = (V4(3)*V3(3)-V4(4)*V3(4)-V4(5)*V3(5)-V4(6)*V3(6))
-      V1(3)= COUP*(-CI*(V4(3)*TMP1)+CI*(V2(3)*TMP12))
-      V1(4)= COUP*(+CI*(V4(4)*TMP1)-CI*(V2(4)*TMP12))
-      V1(5)= COUP*(+CI*(V4(5)*TMP1)-CI*(V2(5)*TMP12))
-      V1(6)= COUP*(+CI*(V4(6)*TMP1)-CI*(V2(6)*TMP12))
+      TMP2 = (V3(3)*V2(3)-V3(4)*V2(4)-V3(5)*V2(5)-V3(6)*V2(6))
+      TMP5 = (V3(3)*V4(3)-V3(4)*V4(4)-V3(5)*V4(5)-V3(6)*V4(6))
+      V1(3)= COUP*(-CI*(V4(3)*TMP2)+CI*(V2(3)*TMP5))
+      V1(4)= COUP*(+CI*(V4(4)*TMP2)-CI*(V2(4)*TMP5))
+      V1(5)= COUP*(+CI*(V4(5)*TMP2)-CI*(V2(5)*TMP5))
+      V1(6)= COUP*(+CI*(V4(6)*TMP2)-CI*(V2(6)*TMP5))
       END
 
 

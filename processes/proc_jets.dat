@@ -29,4 +29,4 @@ define vl~ = ve~ vm~ vt~
 # Specify process(es) to run
 generate p p > j j
 
-output events/jets
+output _OUTDIR_/jets

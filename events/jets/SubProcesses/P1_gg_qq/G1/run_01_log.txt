@@ -1,9 +1,9 @@
 ==== LHAPDF6 USING DEFAULT-TYPE LHAGLUE INTERFACE ====
-LHAPDF 6.5.4 loading /home/ryanliu/simulation/lhapdf6/share/LHAPDF/NNPDF31_nnlo_hessian_pdfas/NNPDF31_nnlo_hessian_pdfas_0000.dat
+LHAPDF 6.3.0 loading /usr/local/share/LHAPDF/NNPDF31_nnlo_hessian_pdfas/NNPDF31_nnlo_hessian_pdfas_0000.dat
 NNPDF31_nnlo_hessian_pdfas PDF set, member #0, version 1; LHAPDF ID = 306000
  Process in group number            1
  A PDF is used, so alpha_s(MZ) is going to be modified
- Old value of alpha_s from param_card:   0.11799999999999999     
+ Old value of alpha_s from param_card:   0.11800220000000000     
  New value of alpha_s from PDF lhapdf :  0.11800208008122040     
  using LHAPDF
  Define smin to   4.0000000000000008E-002
@@ -24,7 +24,7 @@ NNPDF31_nnlo_hessian_pdfas PDF set, member #0, version 1; LHAPDF ID = 306000
   
  aEWM1 =    132.50700000000001     
  mdl_Gf =    1.1663900000000000E-005
- aS =   0.11799999999999999     
+ aS =   0.11800220000000000     
  mdl_ymb =    4.7000000000000002     
  mdl_ymt =    173.00000000000000     
  mdl_ymtau =    1.7769999999999999     
@@ -40,9 +40,9 @@ NNPDF31_nnlo_hessian_pdfas PDF set, member #0, version 1; LHAPDF ID = 306000
   Internal Params
   ---------------------------------
   
+ mdl_CKM3x3 =    1.0000000000000000     
  mdl_conjg__CKM1x1 =    1.0000000000000000     
  mdl_conjg__CKM3x3 =    1.0000000000000000     
- mdl_CKM3x3 =    1.0000000000000000     
  mdl_complexi =                (0.0000000000000000,1.0000000000000000)
  mdl_MZ__exp__2 =    8315.2513440000002     
  mdl_MZ__exp__4 =    69143404.913893804     
@@ -76,14 +76,14 @@ NNPDF31_nnlo_hessian_pdfas PDF set, member #0, version 1; LHAPDF ID = 306000
   Internal Params evaluated point by point
   ----------------------------------------
   
- mdl_sqrt__aS =   0.34351128074635334     
- mdl_G__exp__2 =    1.4828317324943823     
+ mdl_sqrt__aS =   0.34351448295523146     
+ mdl_G__exp__2 =    1.4828593785097339     
   Couplings of sm
   ---------------------------------
   
         GC_10 =  -0.12177E+01   0.00000E+00
         GC_11 =   0.00000E+00   0.12177E+01
-        GC_12 =   0.00000E+00   0.14828E+01
+        GC_12 =   0.00000E+00   0.14829E+01
 
  Collider parameters:
  --------------------
@@ -105,7 +105,7 @@ Enter 0 for fixed, 2 for adjustable grid:
 Suppress amplitude (0 no, 1 yes)? 
  Using suppressed amplitude.
 Exact helicity sum (0 yes, n = number/event)? 
-Thanks for using LHAPDF 6.5.4. Please make sure to cite the paper:
+Thanks for using LHAPDF 6.3.0. Please make sure to cite the paper:
   Eur.Phys.J. C75 (2015) 3, 132  (http://arxiv.org/abs/1412.7420)
  Explicitly summing over helicities
 Enter Configuration Number: 
@@ -133,8 +133,8 @@ Setting grid   1    0.40816E-14   1
           Setting minimum to    5.1020408163265317E-009
  Transforming s_hat 1/s            3   5.1020408163265317E-009   4.0000000000000008E-002   195999999.99999997     
 Using random seed offsets     1 :      2
-  with seed                   45
- Ranmar initialization seeds       26577        9421
+  with seed                   24
+ Ranmar initialization seeds       31059        9399
  
  ********************************************
  * You are using the DiscreteSampler module *
@@ -150,19 +150,19 @@ Using random seed offsets     1 :      2
 d R # 3  >    -0.0     0.0
 s min # 3>     0.0     0.0
 xqcutij # 3>     0.0     0.0
- Warning: Too low fact scales:   0.19881485460273418       0.19881485460273418     
- Warning: Too low fact scales:   0.48541856990477900       0.48541856990477900     
- Warning: Too low fact scales:   0.14817412292905224       0.14817412292905224     
- Warning: Too low fact scales:   0.31987993538128023       0.31987993538128023     
- Warning: Too low fact scales:   0.23130129714621489       0.23130129714621489     
- Warning: Too low fact scales:    1.6534116413392423        1.6534116413392423     
- Warning: Too low fact scales:   0.13106162306094507       0.13106162306094507     
- Warning: Too low fact scales:   0.55049239844132158       0.55049239844132158     
- Warning: Too low fact scales:   0.31833784285987454       0.31833784285987454     
- Warning: Too low fact scales:   0.13774536697066633       0.13774536697066633     
- Warning: Too low fact scales:   0.29536285718366262       0.29536285718366262     
+ Warning: Too low fact scales:   0.10526129288201197       0.10526129288201197     
+ Warning: Too low fact scales:   0.15615378687848824       0.15615378687848824     
+ Warning: Too low fact scales:   0.28940870845167588       0.28940870845167588     
+ Warning: Too low fact scales:   0.54468699368605822       0.54468699368605822     
+ Warning: Too low fact scales:   0.15845428009125836       0.15845428009125836     
+ Warning: Too low fact scales:   0.11118479588252227       0.11118479588252227     
+ Warning: Too low fact scales:   0.89484401523247459       0.89484401523247459     
+ Warning: Too low fact scales:   0.12103414895572415       0.12103414895572415     
+ Warning: Too low fact scales:   0.10810175142649256       0.10810175142649256     
+ Warning: Too low fact scales:   0.16056325982717642       0.16056325982717642     
+ Warning: Too low fact scales:   0.55508288129663241       0.55508288129663241     
  No more warnings written out this run.
- alpha_s for scale    4.8748708170782207       is   0.21440365275714557     
+ alpha_s for scale    9.3158538133869992       is   0.18112418714315429     
  RESET CUMULATIVE VARIABLE
         1000  points passed the cut but all returned zero
  therefore considering this contribution as zero

@@ -10,23 +10,25 @@ echo "args: $@"
 proc=$1
 nevts=$2
 seed=$3
+outdir=$4
 
 
 # run MadGraph event generation
+mkdir -p ${outdir}/${proc}/
+cp ./processes/proc_${proc}.dat ${outdir}/${proc}/proc_${proc}.dat
+sed -i -e "s@_OUTDIR_@$outdir@g" ${outdir}/${proc}/proc_${proc}.dat
+/usr/local/MG5_aMC_v3_5_1/bin/mg5_aMC ${outdir}/${proc}/proc_${proc}.dat
 
-mg5_aMC ./processes/proc_${proc}.dat
-
-cp ./cards/* ./events/${proc}/Cards/
+cp ./cards/* ${outdir}/${proc}/Cards/
 if test -f ./processes/run_${proc}.dat; then
-  cp ./processes/run_${proc}.dat ./events/${proc}/Cards/run_card.dat
+  cp ./processes/run_${proc}.dat ${outdir}/${proc}/Cards/run_card.dat
 fi
 
-sed -i -e "s@_NEVENTS_@$nevts@g" ./events/${proc}/Cards/run_card.dat
-sed -i -e "s@_NEVENTS_@$nevts@g" ./events/${proc}/Cards/launch.dat
-sed -i -e "s@_PileUpFile_@$workdir/MinBias_100k.pileup@g" ./events/${proc}/Cards/delphes_card.dat
-sed -i -e "s@_ISEED_@$seed@g" ./events/${proc}/Cards/run_card.dat
+sed -i -e "s@_NEVENTS_@$nevts@g" ${outdir}/${proc}/Cards/run_card.dat
+sed -i -e "s@_NEVENTS_@$nevts@g" ${outdir}/${proc}/Cards/launch.dat
+sed -i -e "s@_PileUpFile_@$workdir/MinBias_100k.pileup@g" ${outdir}/${proc}/Cards/delphes_card.dat
+sed -i -e "s@_ISEED_@$seed@g" ${outdir}/${proc}/Cards/run_card.dat
 
-events/${proc}/bin/madevent ./events/${proc}/Cards/launch.dat
-
+${outdir}/${proc}/bin/madevent ${outdir}/${proc}/Cards/launch.dat
 # make validation plots
-python3 ./make_plots.py -p ./events/${proc}/
+# python3 ./make_plots.py -p ${outdir}/${proc}/

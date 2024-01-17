@@ -153,7 +153,7 @@ module PileUpMerger PileUpMerger {
   set VertexOutputArray vertices
 
   # pre-generated minbias input file
-  set PileUpFile /home/ryanliu/simulation/scripts/MinBias_100k.pileup
+  set PileUpFile /uscms/home/ryanliu/simulation/MinBias_100k.pileup
   #set PileUpFile MinBias.pileup
   
   # average expected pile up

@@ -13,8 +13,8 @@ C
       REAL*8 P3(0:3)
       COMPLEX*16 TMP10
       COMPLEX*16 TMP11
+      COMPLEX*16 TMP12
       COMPLEX*16 TMP6
-      COMPLEX*16 TMP8
       COMPLEX*16 TMP9
       COMPLEX*16 V1(*)
       COMPLEX*16 V2(*)
@@ -33,19 +33,19 @@ C
       P3(1) = -DBLE(V3(2))
       P3(2) = -DIMAG(V3(2))
       P3(3) = -DIMAG(V3(1))
-      TMP10 = (V1(3)*P2(0)-V1(4)*P2(1)-V1(5)*P2(2)-V1(6)*P2(3))
-      TMP11 = (V1(3)*P3(0)-V1(4)*P3(1)-V1(5)*P3(2)-V1(6)*P3(3))
+      TMP10 = (V2(3)*P3(0)-V2(4)*P3(1)-V2(5)*P3(2)-V2(6)*P3(3))
+      TMP11 = (P2(0)*V1(3)-P2(1)*V1(4)-P2(2)*V1(5)-P2(3)*V1(6))
+      TMP12 = (V1(3)*P3(0)-V1(4)*P3(1)-V1(5)*P3(2)-V1(6)*P3(3))
       TMP6 = (V1(3)*V2(3)-V1(4)*V2(4)-V1(5)*V2(5)-V1(6)*V2(6))
-      TMP8 = (V2(3)*P1(0)-V2(4)*P1(1)-V2(5)*P1(2)-V2(6)*P1(3))
-      TMP9 = (V2(3)*P3(0)-V2(4)*P3(1)-V2(5)*P3(2)-V2(6)*P3(3))
-      V3(3)= COUP*(TMP6*(-CI*(P1(0))+CI*(P2(0)))+(V1(3)*(+CI*(TMP8)-CI
-     $ *(TMP9))+V2(3)*(-CI*(TMP10)+CI*(TMP11))))
-      V3(4)= COUP*(TMP6*(+CI*(P1(1))-CI*(P2(1)))+(V1(4)*(-CI*(TMP8)+CI
-     $ *(TMP9))+V2(4)*(+CI*(TMP10)-CI*(TMP11))))
-      V3(5)= COUP*(TMP6*(+CI*(P1(2))-CI*(P2(2)))+(V1(5)*(-CI*(TMP8)+CI
-     $ *(TMP9))+V2(5)*(+CI*(TMP10)-CI*(TMP11))))
-      V3(6)= COUP*(TMP6*(+CI*(P1(3))-CI*(P2(3)))+(V1(6)*(-CI*(TMP8)+CI
-     $ *(TMP9))+V2(6)*(+CI*(TMP10)-CI*(TMP11))))
+      TMP9 = (P1(0)*V2(3)-P1(1)*V2(4)-P1(2)*V2(5)-P1(3)*V2(6))
+      V3(3)= COUP*(TMP6*(-CI*(P1(0))+CI*(P2(0)))+(V1(3)*(+CI*(TMP9)-CI
+     $ *(TMP10))+V2(3)*(-CI*(TMP11)+CI*(TMP12))))
+      V3(4)= COUP*(TMP6*(+CI*(P1(1))-CI*(P2(1)))+(V1(4)*(-CI*(TMP9)+CI
+     $ *(TMP10))+V2(4)*(+CI*(TMP11)-CI*(TMP12))))
+      V3(5)= COUP*(TMP6*(+CI*(P1(2))-CI*(P2(2)))+(V1(5)*(-CI*(TMP9)+CI
+     $ *(TMP10))+V2(5)*(+CI*(TMP11)-CI*(TMP12))))
+      V3(6)= COUP*(TMP6*(+CI*(P1(3))-CI*(P2(3)))+(V1(6)*(-CI*(TMP9)+CI
+     $ *(TMP10))+V2(6)*(+CI*(TMP11)-CI*(TMP12))))
       END
 
 

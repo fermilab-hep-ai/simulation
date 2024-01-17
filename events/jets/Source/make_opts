@@ -1,9 +1,11 @@
-lhapdf=/home/ryanliu/simulation/lhapdf6/bin/lhapdf-config
+pdlabel1=
+pdlabel2=
+lhapdf=lhapdf-config
 lhapdfversion=6
-lhapdfsubversion=5
-lhapdf_config=/home/ryanliu/simulation/lhapdf6/bin/lhapdf-config
-PYTHIA8_PATH=/home/ryanliu/simulation/madgraph/HEPTools/pythia8
-MG5AMC_VERSION=2.9.17
+lhapdfsubversion=3
+lhapdf_config=lhapdf-config
+PYTHIA8_PATH=/usr/local
+MG5AMC_VERSION=3.5.1
 GLOBAL_FLAG=-O
 ALOHA_FLAG=
 MATRIX_FLAG=
@@ -11,8 +13,8 @@ DEFAULT_CPP_COMPILER=g++
 MACFLAG=
 STDLIB=-lstdc++
 STDLIB_FLAG=
-DEFAULT_F2PY_COMPILER=f2py
-DEFAULT_F_COMPILER=gfortran
+DEFAULT_F_COMPILER=/usr/bin/gfortran
+DEFAULT_F2PY_COMPILER=f2py3.8
 #end_of_make_opts_variables
 
 BIASLIBDIR=../../../lib/

@@ -2,4 +2,4 @@ launch
 shower=Pythia8
 detector=Delphes
 done
-set nevents 1000
+set nevents 100
