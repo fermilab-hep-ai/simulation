@@ -12,4 +12,4 @@ add process p p > l- vl~ j $$ t t~ h @6
 add process p p > l- vl~ j j $$ t t~ h @7
 
 
-output _OUTDIR_/WJetsToLNu_13TeV-madgraphMLM-pythia8 -nojpeg
+output _OUTDIR_/WJetsToLNu_13TeV-madgraphMLM-pythia8

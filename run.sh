@@ -70,24 +70,20 @@ fi
     
 if [ -e ./processes/${proc}/${proc}_madspin_card.dat ]; then
   cp ./processes/${proc}/${proc}_madspin_card.dat ${outdir}/${proc}/Cards/madspin_card.dat
+  sed -i -e "s@_OUTDIR_@$outdir/$proc@g" ${outdir}/${proc}/Cards/madspin_card.dat
 fi
 
-echo "launch" > ${outdir}/${proc}/Cards/makegrid.dat
-echo "shower=Pythia8" >> ${outdir}/${proc}/Cards/makegrid.dat
-echo "detector=Delphes" >> ${outdir}/${proc}/Cards/makegrid.dat
-echo "reweight=OFF" >> ${outdir}/${proc}/Cards/makegrid.dat
-echo "done" >> ${outdir}/${proc}/Cards/makegrid.dat
-echo "set nevents ${nevts}" >> ${outdir}/${proc}/Cards/makegrid.dat
+echo "set nevents ${nevts}" >> ${outdir}/${proc}/Cards/launchrun.dat
 if [ -e ./processes/${proc}/${proc}_customizecards.dat ]; then
-        cat ./processes/${proc}/${proc}_customizecards.dat | sed '/^$/d;/^#.*$/d' >> ${outdir}/${proc}/Cards/makegrid.dat
-        echo "" >> ${outdir}/${proc}/Cards/makegrid.dat
+        cat ./processes/${proc}/${proc}_customizecards.dat | sed '/^$/d;/^#.*$/d' >> ${outdir}/${proc}/Cards/launchrun.dat
+        echo "" >> ${outdir}/${proc}/Cards/launchrun.dat
 fi
-echo "done" >> ${outdir}/${proc}/Cards/makegrid.dat
+echo "done" >> ${outdir}/${proc}/Cards/launchrun.dat
 
 sed -i -e "s@_NEVENTS_@$nevts@g" ${outdir}/${proc}/Cards/run_card.dat
 sed -i -e "s@_PileUpFile_@$workdir/MinBias_100k.pileup@g" ${outdir}/${proc}/Cards/delphes_card.dat
 sed -i -e "s@_ISEED_@$seed@g" ${outdir}/${proc}/Cards/run_card.dat
 
-${outdir}/${proc}/bin/madevent ${outdir}/${proc}/Cards/makegrid.dat
+${outdir}/${proc}/bin/madevent ${outdir}/${proc}/Cards/launchrun.dat
 # make validation plots
 python3 ./make_plots.py -p ${outdir}/${proc}/
