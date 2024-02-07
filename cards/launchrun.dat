@@ -2,4 +2,3 @@ launch
 shower=Pythia8
 detector=Delphes
 done
-set nevents _NEVENTS_

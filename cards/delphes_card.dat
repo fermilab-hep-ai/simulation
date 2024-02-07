@@ -4944,7 +4944,7 @@ module TreeWriter TreeWriter {
 
 
 # add Branch InputArray BranchName BranchClass
-# add Branch GenParticleFilter/filteredParticles Particle GenParticle
+  add Branch GenParticleFilter/filteredParticles Particle GenParticle
 # add Branch Delphes/allParticles Particle GenParticle
   add Branch PileUpMerger/vertices Vertex Vertex
 
@@ -4955,6 +4955,9 @@ module TreeWriter TreeWriter {
   add Branch HCal/eflowTracks EFlowTrack Track
   add Branch ECal/eflowPhotons EFlowPhoton Tower
   add Branch HCal/eflowNeutralHadrons EFlowNeutralHadron Tower
+
+  add Branch EFlowMerger/eflow EFlow ParticleFlowCandidate
+  add Branch EFlowMergerCHS/eflow EFlowCHS ParticleFlowCandidate
 
   add Branch PhotonLooseID/photons PhotonLoose Photon
   add Branch PhotonTightID/photons PhotonTight Photon

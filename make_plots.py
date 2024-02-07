@@ -5,6 +5,7 @@ import uproot
 import argparse
 import yaml
 import os
+from fnmatch import fnmatch
 
 matplotlib.use("agg")
 
@@ -15,8 +16,16 @@ def main():
     args = parser.parse_args()
 
     latest_run = sorted(os.listdir(os.path.join(args.path, "Events")))[-1]
+    root_file = None
+    for file in os.listdir(os.path.join(args.path, "Events", latest_run)):
+        if fnmatch(file, "*.root"):
+            root_file = file
+            break
+    if root_file is None:
+        raise RuntimeError("Cannot Find Root Event!")
+    print("Found the following event record: ", root_file)
 
-    event = uproot.open(os.path.join(args.path, "Events", latest_run, "tag_1_delphes_events.root"))["Delphes;1"]
+    event = uproot.open(os.path.join(args.path, "Events", latest_run, root_file))["Delphes;1"]
 
     with open(args.val_config) as f:
         val_config = yaml.safe_load(f)

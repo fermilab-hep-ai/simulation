@@ -1,0 +1,7 @@
+import model sm #-ckm_no_b_mass TODO: add sm/restrict_ckm_no_b_mass.dat to Docker image.
+# Specify process(es) to run
+generate p p > j j @0
+add process p p > j j j @1
+add process p p > j j j j @2
+# Output processes to MadEvent directory
+output _OUTDIR_/QCD_HT50toInf -nojpeg

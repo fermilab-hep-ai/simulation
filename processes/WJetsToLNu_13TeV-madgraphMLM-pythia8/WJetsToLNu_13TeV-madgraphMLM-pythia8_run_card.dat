@@ -18,18 +18,18 @@
 #*******************                                                 
 # Running parameters
 #*******************                                                 
-#                                                                   
+#                                                                    
 #*********************************************************************
 # Tag name for the run (one word)                                    *
 #*********************************************************************
-  tag_1     = run_tag ! name of the run 
+  WJets     = run_tag ! name of the run 
 #*********************************************************************
 # Number of events and rnd seed                                      *
 # Warning: Do not generate more than 1M events in a single run       *
 # If you want to run Pythia, avoid more than 50k events in a run.    *
 #*********************************************************************
-  _NEVENTS_ = nevents ! Number of unweighted events requested 
-  _ISEED_   = iseed   ! rnd seed (0=assigned automatically=default)
+  _NEVENTS_   = nevents ! Number of unweighted events requested 
+  _ISEED_     = iseed   ! rnd seed (0=assigned automatically=default))
 #*********************************************************************
 # Collider type and energy                                           *
 # lpp: 0=No PDF, 1=proton, -1=antiproton, 2=photon from proton,      *
@@ -43,10 +43,9 @@
 #*********************************************************************
 # PDF CHOICE: this automatically fixes also alpha_s and its evol.    *
 #*********************************************************************
-     lhapdf    = pdlabel     ! PDF set                                     
-     306000  = lhaid      ! if pdlabel=lhapdf, this is the lhapdf number
-#     $DEFAULT_PDF_MEMBERS = reweight_PDF     ! reweight to get PDF uncertainty
-# To see heavy ion options: type "update ion_pdf"
+     lhapdf = pdlabel     ! PDF set                                     
+     306000 = lhaid     ! if pdlabel=lhapdf, this is the lhapdf number
+     NNPDF31_nnlo_hessian_pdfas  = reweight_PDF
 #*********************************************************************
 # Renormalization and factorization scales                           *
 #*********************************************************************
@@ -69,13 +68,13 @@
 #*********************************************************************
 # Matching parameter (MLM only)
 #*********************************************************************
- 0 = ickkw            ! 0 no matching, 1 MLM
+ 1 = ickkw            ! 0 no matching, 1 MLM
  1.0 = alpsfact         ! scale factor for QCD emission vx
  False = chcluster        ! cluster only according to channel diag
- 4 = asrwgtflavor     ! highest quark flavor for a_s reweight
- False  = auto_ptj_mjj  ! Automatic setting of ptj and mjj if xqcut >0
-                                   ! (turn off for VBF and single top processes) 
- 0.0   = xqcut   ! minimum kt jet measure between partons
+ 5 = asrwgtflavor     ! highest quark flavor for a_s reweight
+ True  = auto_ptj_mjj  ! Automatic setting of ptj and mjj if xqcut >0
+ False        = pdfwgt           ! for ickkw=1, perform pdf reweighting 
+ 10.0   = xqcut   ! minimum kt jet measure between partons
 #*********************************************************************
 #
 #*********************************************************************
@@ -110,10 +109,10 @@
 #*********************************************************************
 # Minimum and maximum pt's (for max, -1 means no cut)                *
 #*********************************************************************
- 0.1  = ptj       ! minimum pt for the jets 
+ 0.01  = ptj       ! minimum pt for the jets 
  0.0  = ptb       ! minimum pt for the b 
- 5.0  = pta       ! minimum pt for the photons 
- -1  = ptl       ! minimum pt for the charged leptons 
+ 0  = pta       ! minimum pt for the photons 
+ 0  = ptl       ! minimum pt for the charged leptons 
  0.0  = misset    ! minimum missing Et (sum of neutrino's momenta)
  -1.0  = ptjmax    ! maximum pt for the jets
  -1.0  = ptbmax    ! maximum pt for the b
@@ -138,10 +137,10 @@
 #*********************************************************************
 # Maximum and minimum absolute rapidity (for max, -1 means no cut)   *
 #*********************************************************************
-  -1.0 = etaj    ! max rap for the jets 
+  5.0 = etaj    ! max rap for the jets 
   -1.0  = etab    ! max rap for the b
- -1.0  = etaa    ! max rap for the photons 
- -1.0  = etal    ! max rap for the charged leptons 
+ -1  = etaa    ! max rap for the photons 
+ -1  = etal    ! max rap for the charged leptons 
  0.0  = etajmin ! min rap for the jets
  0.0  = etabmin ! min rap for the b
  0.0  = etaamin ! min rap for the photons
@@ -151,16 +150,16 @@
 #*********************************************************************
 # Minimum and maximum DeltaR distance                                *
 #*********************************************************************
- 0.01 = drjj    ! min distance between jets 
+ 0.0 = drjj    ! min distance between jets 
  0.0   = drbb    ! min distance between b's 
- 0.01 = drll    ! min distance between leptons 
+ 0.0 = drll    ! min distance between leptons 
  0.0 = draa    ! min distance between gammas 
  0.0   = drbj    ! min distance between b and jet 
- 0.0 = draj    ! min distance between gamma and jet 
+ 0.1 = draj    ! min distance between gamma and jet 
  0.0 = drjl    ! min distance between jet and lepton 
  0.0   = drab    ! min distance between gamma and b 
  0.0   = drbl    ! min distance between b and lepton 
- 0.0 = dral    ! min distance between gamma and lepton 
+ 0.1 = dral    ! min distance between gamma and lepton 
  -1.0  = drjjmax ! max distance between jets
  -1.0  = drbbmax ! max distance between b's
  -1.0  = drllmax ! max distance between leptons
@@ -263,12 +262,12 @@
  -1.0  =  ktdurham        
  0.4   =  dparameter
  -1.0  =  ptlund
- 1, 2, 3, 4, 5, 6, 21, 82  =  pdgs_for_merging_cut ! PDGs for two cuts above   
+ 1, 2, 3, 4, 5, 6, 21  =  pdgs_for_merging_cut ! PDGs for two cuts above   
 #*********************************************************************
 # maximal pdg code for quark to be considered as a light jet         *
 # (otherwise b cuts are applied)                                     *
 #*********************************************************************
- 4 = maxjetflavor    ! Maximum jet pdg code
+ 5 = maxjetflavor    ! Maximum jet pdg code
 #*********************************************************************
 #
 #*********************************************************************
