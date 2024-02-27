@@ -12,7 +12,7 @@ matplotlib.use("agg")
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", "-p", type=str, required=True)
-    parser.add_argument("--val_config", "-v", type=str, default="./validation_config.yaml")
+    parser.add_argument("--val-config", "-v", type=str, default="./validation_config.yaml")
     args = parser.parse_args()
 
     latest_run = sorted(os.listdir(os.path.join(args.path, "Events")))[-1]

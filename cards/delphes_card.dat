@@ -154,7 +154,6 @@ module PileUpMerger PileUpMerger {
 
   # pre-generated minbias input file
   set PileUpFile _PileUpFile_
-  #set PileUpFile MinBias.pileup
   
   # average expected pile up
   set MeanPileUp 200

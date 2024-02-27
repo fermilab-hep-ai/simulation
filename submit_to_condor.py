@@ -9,10 +9,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-o','--output', type=str, required=True,
-        help='output  EOS directory')
-
-    parser.add_argument('-s','--shscript', type=str, default='run.sh',
-        help='name of python script to execute')
+        help='output EOS directory')
 
     parser.add_argument('-t', '--toys', type=int, default=1,
         help='number of toys to be processed')
@@ -26,8 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', default=None,
         help='seed for simulation')
 
-    # eosdir = '/eos/cms/store/cmst3/user/egovorko/simulation/'
-    parser.add_argument('--eosdir', default='./',
+    parser.add_argument('--simdir', default=os.getcwd(),
         help='path to the shared simulation folder')
 
     parser.add_argument('-l','--local', action='store_true',
@@ -36,25 +32,25 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # folder to save the outputs of the sh script
-    outputdir = f'{args.output}/'
+    outputdir = f'{os.path.abspath(args.output)}/'
+    simdir = f"{os.path.abspath(args.simdir)}/"
     os.system(f'mkdir -p {outputdir}')
     print(f'Created output directory {outputdir}')
-
-    # folder to save the outputs of each condor job (file.out, file.log, file.err)
-    label = f'{args.output.split("/")[-1]}_{args.process}_{args.nevents}_{time.time()}'
-    os.system(f'mkdir -p {label}')
-    print(f'Created Condor output directory {label}')
 
     # change permission to the submission folder so that we could copy it
     os.system(f'chmod a+x {os.getcwd()}')
 
     if args.local:
         os.system(f'apptainer exec \
-            --bind {outputdir}:/output \
-            --bind {args.eosdir}:/simulation \
-            --nv /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
-            sh /simulation/{args.shscript} {args.process} {args.nevents} 42 /output /simulation\n')
+            --bind {outputdir},{simdir}  \
+            --no-mount bind-paths \
+            /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
+            sh {simdir}/run.sh {args.process} {args.nevents} 42 {outputdir} {simdir}\n')
     else:
+        # folder to save the outputs of each condor job (file.out, file.log, file.err)
+        label = f'{args.output.split("/")[-1]}_{args.process}_{args.nevents}_{time.time()}'
+        os.system(f'mkdir -p {label}')
+        print(f'Created Condor output directory {label}')
         for i in range(args.toys):
 
             # define job label and generation seed
@@ -66,10 +62,10 @@ if __name__ == '__main__':
             script_src = open(f'{joblabel}.src', 'w')
             script_src.write('#!/bin/bash\n')
             script_src.write(f'apptainer exec \
-                --bind {outputdir}:/output \
-                --bind {args.eosdir}:/simulation \
-                --nv /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
-                sh /simulation/{args.shscript} {args.process} {args.nevents} {seed} /output /simulation\n')
+                --bind {outputdir},{simdir} \
+                --no-mount bind-paths \
+                /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
+                sh {simdir}/run.sh {args.process} {args.nevents} {seed} {outputdir} {simdir}\n')
 
             script_src.close()
             os.system(f'chmod a+x {joblabel}.src')
