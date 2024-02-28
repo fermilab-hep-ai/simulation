@@ -4,4 +4,4 @@ generate p p > j j @0
 add process p p > j j j @1
 add process p p > j j j j @2
 # Output processes to MadEvent directory
-output _OUTDIR_/QCD_HT50toInf -nojpeg
+output _OUTDIR_

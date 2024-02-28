@@ -1,7 +1,6 @@
 import os
 import argparse
 import time
-from datetime import datetime
 
 
 if __name__ == '__main__':
@@ -20,7 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--process', type=str, default='WJetsToLNu_13TeV-madgraphMLM-pythia8',
         help='name of the process to generate')
 
-    parser.add_argument('--seed', default=None,
+    parser.add_argument('--seed', default=0,
         help='seed for simulation')
 
     parser.add_argument('--simdir', default=os.getcwd(),
@@ -32,20 +31,25 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # folder to save the outputs of the sh script
-    outputdir = f'{os.path.abspath(args.output)}/'
-    simdir = f"{os.path.abspath(args.simdir)}/"
+    outputdir = os.path.realpath(args.output)
+    simdir = os.path.realpath(args.simdir)
     os.system(f'mkdir -p {outputdir}')
     print(f'Created output directory {outputdir}')
 
     # change permission to the submission folder so that we could copy it
     os.system(f'chmod a+x {os.getcwd()}')
 
+    # parse the paths to avoid double binding.
+    binding_paths = os.path.commonpath([outputdir, simdir])
+    if binding_paths == "/":
+        binding_paths = f"{outputdir},{simdir}"
+    print(f"Binding {binding_paths} to the container.")
+
     if args.local:
         os.system(f'apptainer exec \
-            --bind {outputdir},{simdir}  \
-            --no-mount bind-paths \
+            --bind {binding_paths}  \
             /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
-            sh {simdir}/run.sh {args.process} {args.nevents} 42 {outputdir} {simdir}\n')
+            sh {simdir}/run.sh {args.process} {args.nevents} {args.seed} {outputdir} {simdir}\n')
     else:
         # folder to save the outputs of each condor job (file.out, file.log, file.err)
         label = f'{args.output.split("/")[-1]}_{args.process}_{args.nevents}_{time.time()}'
@@ -55,17 +59,14 @@ if __name__ == '__main__':
 
             # define job label and generation seed
             joblabel = f'{label}/{i}'
-            seed = datetime.now().microsecond+datetime.now().second+datetime.now().minute \
-                if not args.seed else args.seed
 
             # src file
             script_src = open(f'{joblabel}.src', 'w')
             script_src.write('#!/bin/bash\n')
             script_src.write(f'apptainer exec \
-                --bind {outputdir},{simdir} \
-                --no-mount bind-paths \
+                --bind {binding_paths} \
                 /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
-                sh {simdir}/run.sh {args.process} {args.nevents} {seed} {outputdir} {simdir}\n')
+                sh {simdir}/run.sh {args.process} {args.nevents} {args.seed} {outputdir} {simdir}\n')
 
             script_src.close()
             os.system(f'chmod a+x {joblabel}.src')
