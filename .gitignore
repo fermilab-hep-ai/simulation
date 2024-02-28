@@ -134,3 +134,9 @@ MinBias_100k.pileup
 
 # VScode Artifact
 .vscode
+
+# Simulation artifacts
+py.py
+MG5_debug
+ME5_debug
+nsqso_born.inc
