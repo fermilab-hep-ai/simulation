@@ -1,0 +1,16 @@
+import model sm-ckm_no_b_mass
+
+define l+ = e+ mu+ ta+
+define l- = e- mu- ta-
+define q = u c d s b u~ c~ d~ s~ b~
+
+generate p p > t t~ QED=0, (t > W+ b, W+ > q q), (t~ > w- b~, W- > l- vl~) @0
+add process p p > t t~ j QED=0, (t > W+ b, W+ > q q), (t~ > w- b~, W- > l- vl~) @1
+add process p p > t t~ j j QED=0, (t > W+ b, W+ > q q), (t~ > w- b~, W- > l- vl~) @2
+
+generate p p > t t~ QED=0, (t > W+ b, W+ > l vl), (t~ > w- b~, W- > q q) @0
+add process p p > t t~ j QED=0, (t > W+ b, W+ > l vl), (t~ > w- b~, W- > q q) @1
+add process p p > t t~ j j QED=0, (t > W+ b, W+ > l vl), (t~ > w- b~, W- > q q) @2
+
+output tt0123j_5f_ckm_LO_MLM_semiLeptonic -nojpeg
+
