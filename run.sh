@@ -40,7 +40,7 @@ mkdir -p ${proc_outdir}/
 rm -r ${proc_outdir}/*
 cp ${simdir}/processes/${proc}/${proc}_proc_card.dat ${proc_outdir}/proc_card.dat
 sed -i -e "s@_OUTDIR_@$proc_outdir@g" ${proc_outdir}/proc_card.dat
-/usr/local/MG5_aMC_v3_5_1/bin/mg5_aMC ${proc_outdir}/proc_card.dat
+/usr/local/MG5_aMC_v3_5_3/bin/mg5_aMC ${proc_outdir}/proc_card.dat
 
 # write run cards
 cp ${simdir}/cards/* ${proc_outdir}/Cards/

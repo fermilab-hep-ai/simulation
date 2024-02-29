@@ -3,4 +3,4 @@ define p = g u c d s u~ c~ d~ s~
 define j = g u c d s u~ c~ d~ s~
 generate p p > go go, go > u d s, go > u~ d~ s~ @0
 add process p p > go go j, go > u d s, go > u~ d~ s~ @1
-output RPV_GluinoGluinoToJets_M-200 -nojpeg
+output _OUTDIR_ 

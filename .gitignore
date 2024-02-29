@@ -133,6 +133,7 @@ dmypy.json
 # Event Record
 events/*/Events/**
 MinBias_100k.pileup
+jobs.csv
 
 # VScode Artifact
 .vscode
