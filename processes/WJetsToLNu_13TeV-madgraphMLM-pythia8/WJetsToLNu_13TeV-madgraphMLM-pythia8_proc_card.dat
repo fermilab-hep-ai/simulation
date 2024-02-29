@@ -1,4 +1,4 @@
-import model sm #-ckm_no_b_mass TODO: add sm/restrict_ckm_no_b_mass.dat to Docker image.
+import model sm-ckm_no_b_mass TODO: add sm/restrict_ckm_no_b_mass.dat to Docker image.
 
 define l+ = e+ mu+ ta+
 define l- = e- mu- ta-
@@ -12,4 +12,4 @@ add process p p > l- vl~ j $$ t t~ h @6
 add process p p > l- vl~ j j $$ t t~ h @7
 
 
-output _OUTDIR_/WJetsToLNu_13TeV-madgraphMLM-pythia8
+output _OUTDIR_
