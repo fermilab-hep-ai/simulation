@@ -94,6 +94,6 @@ if __name__ == '__main__':
             reader = csv.reader(csvfile, delimiter=',')
             reader.__next__()
             for process, nevents, seed in reader:
-                submit_to_condor(process, int(nevents), seed, args.outdir, args.simdir)
+                submit_to_condor(process, int(nevents), int(seed), args.outdir, args.simdir)
     else:
         submit_to_condor(args.process, args.nevents, args.seed, args.outdir, args.simdir)
