@@ -4,8 +4,8 @@ ARG LHAPDF_VERSION=6.3.0
 ARG PYTHIA_VERSION=8310
 ARG FASTJET_VERSION=3.3.4
 ARG HEPMC_VERSION=2.06.11
-ARG MG_VERSION=3.5.1
-ARG MG_VERSION_=3_5_1
+ARG MG_VERSION=3.5.3
+ARG MG_VERSION_=3_5_3
 ARG MG_VERSION_x=3.5.x
 ARG FASTJET_VERSION=3.3.4
 ARG BOOST_VERSION=1.76.0
@@ -19,24 +19,24 @@ SHELL [ "/bin/bash", "-c" ]
 
 RUN apt-get -qq -y update && \
     apt-get -qq -y install \
-      gcc \
-      g++ \
-      gfortran \
-      make \
-      vim \
-      cmake \
-      bc \
-      zlibc \
-      zlib1g-dev \
-      libbz2-dev \
-      rsync \
-      curl \
-      bash-completion \
-      python3-dev \
-      less \
-      coreutils \
-      libboost-all-dev \
-      wget && \
+    gcc \
+    g++ \
+    gfortran \
+    make \
+    vim \
+    cmake \
+    bc \
+    zlibc \
+    zlib1g-dev \
+    libbz2-dev \
+    rsync \
+    curl \
+    bash-completion \
+    python3-dev \
+    less \
+    coreutils \
+    libboost-all-dev \
+    wget && \
     apt-get -y autoclean && \
     apt-get -y autoremove && \
     rm -rf /var/lib/apt/lists/*
@@ -48,14 +48,14 @@ RUN mkdir /code && \
     tar xvfz hepmc${HEPMC_VERSION}.tgz && \
     mv HepMC-${HEPMC_VERSION} src && \
     cmake \
-      -DCMAKE_CXX_COMPILER=$(command -v g++) \
-      -DCMAKE_BUILD_TYPE=Release \
-      -Dbuild_docs:BOOL=OFF \
-      -Dmomentum:STRING=MEV \
-      -Dlength:STRING=MM \
-      -DCMAKE_INSTALL_PREFIX=/usr/local \
-      -S src \
-      -B build && \
+    -DCMAKE_CXX_COMPILER=$(command -v g++) \
+    -DCMAKE_BUILD_TYPE=Release \
+    -Dbuild_docs:BOOL=OFF \
+    -Dmomentum:STRING=MEV \
+    -Dlength:STRING=MM \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -S src \
+    -B build && \
     cmake build -L && \
     cmake --build build -- -j$(($(nproc) - 1)) && \
     cmake --build build --target install && \
@@ -72,8 +72,8 @@ RUN mkdir /code && \
     export PYTHON=$(command -v python3) && \
     export PYTHON_CONFIG=/usr/bin/python-config && \
     ./configure \
-      --prefix=/usr/local \
-      --enable-pyext=yes && \
+    --prefix=/usr/local \
+    --enable-pyext=yes && \
     make -j$(($(nproc) - 1)) && \
     make check && \
     make install && \
@@ -90,7 +90,7 @@ RUN mkdir /code && \
     export CXX=$(command -v g++) && \
     export PYTHON=$(command -v python3) && \
     ./configure \
-      --prefix=/usr/local && \
+    --prefix=/usr/local && \
     make -j$(($(nproc) - 1)) && \
     make install && \
     chmod a+w /usr/local/share/LHAPDF/ && \
@@ -105,19 +105,19 @@ RUN mkdir /code && \
     ./configure --help && \
     export PYTHON_MINOR_VERSION="${PYTHON_VERSION%.*}" && \
     ./configure \
-      --prefix=/usr/local \
-      --arch=Linux \
-      --cxx=g++ \
-      --enable-64bit \
-      --with-gzip \
-      --with-hepmc2=/usr/local \
-      --with-lhapdf6=/usr/local \
-      --with-fastjet3=/usr/local \
-      --with-python-bin=/usr/bin \
-      --with-python-lib=/usr/lib/python${PYTHON_MINOR_VERSION} \
-      --with-python-include=/usr/include/python${PYTHON_MINOR_VERSION} \
-      --cxx-common="-O2 -m64 -pedantic -W -Wall -Wshadow -fPIC -std=c++11" \
-      --cxx-shared="-shared -std=c++11 -lpthread" && \
+    --prefix=/usr/local \
+    --arch=Linux \
+    --cxx=g++ \
+    --enable-64bit \
+    --with-gzip \
+    --with-hepmc2=/usr/local \
+    --with-lhapdf6=/usr/local \
+    --with-fastjet3=/usr/local \
+    --with-python-bin=/usr/bin \
+    --with-python-lib=/usr/lib/python${PYTHON_MINOR_VERSION} \
+    --with-python-include=/usr/include/python${PYTHON_MINOR_VERSION} \
+    --cxx-common="-O2 -m64 -pedantic -W -Wall -Wshadow -fPIC -std=c++11" \
+    --cxx-shared="-shared -std=c++11 -lpthread" && \
     make -j$(($(nproc) - 1)) && \
     make install && \
     rm -rf /code
@@ -133,8 +133,8 @@ RUN mkdir -p /code && \
     cd "boost_${BOOST_VERSION_UNDERSCORE}" && \
     ./bootstrap.sh --help && \
     ./bootstrap.sh \
-      --prefix=/usr/local \
-      --with-python=$(command -v python3) && \
+    --prefix=/usr/local \
+    --with-python=$(command -v python3) && \
     ./b2 install -j$(($(nproc) - 1)) && \
     cd / && \
     rm -rf /code
@@ -198,6 +198,7 @@ ENV PATH ${HOME}/.local/bin:$PATH
 ENV MG_VERSION_ "${MG_VERSION_}"
 ENV PATH /usr/local/MG5_aMC_v${MG_VERSION_}/bin:$PATH
 
+# Add models
 RUN cd /usr/local/MG5_aMC_v${MG_VERSION_}/models && \
     wget --no-check-certificate http://madgraph.physics.illinois.edu/Downloads/models//mssm_v4.tgz && \
     tar -zxvf mssm_v4.tgz
@@ -210,9 +211,17 @@ RUN cd /usr/local/MG5_aMC_v${MG_VERSION_}/models && \
     wget --no-check-certificate http://madgraph.physics.illinois.edu/Downloads/models/loop_qcd_qed_sm.tgz && \
     tar -zxvf loop_qcd_qed_sm.tgz
 
+RUN cd /usr/local/MG5_aMC_v${MG_VERSION_}/models && \
+    wget --no-check-certificate http://feynrules.irmp.ucl.ac.be/raw-attachment/wiki/RPVMSSM/af1_ufo.tgz && \
+    tar -zxvf af1_ufo.tgz
+
 RUN echo "convert model /usr/local/MG5_aMC_v${MG_VERSION_}/models/heft" | mg5_aMC && \
     echo "convert model /usr/local/MG5_aMC_v${MG_VERSION_}/models/loop_qcd_qed_sm" | mg5_aMC && \
+    echo "convert model /usr/local/MG5_aMC_v${MG_VERSION_}/models/RPVMSSM_UFO" | mg5_aMC && \
     echo "install ninja" | mg5_aMC
+
+# Add restriction
+ADD docker/restrict_ckm_no_b_mass.dat /usr/local/MG5_aMC_v${MG_VERSION_}/models/sm/restrict_ckm_no_b_mass.dat
 
 # build cuttools
 RUN cd /usr/local/MG5_aMC_v${MG_VERSION_}/vendor/CutTools && \
