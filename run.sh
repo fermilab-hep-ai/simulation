@@ -92,13 +92,13 @@ sed -i -e "s@_PileUpFile_@$simdir/MinBias_100k.pileup@g" ${proc_outdir}/Cards/de
 sed -i -e "s@_ISEED_@$seed@g" ${proc_outdir}/Cards/run_card.dat
 
 ${proc_outdir}/bin/madevent ${proc_outdir}/Cards/launchrun.dat
-# make validation plots
-python3 ${simdir}/make_plots.py -p ${proc_outdir}/ -v ${simdir}/validation_config.yaml
 # clean up tmp directories
 rm -r $outdir/tmp-${proc}-${nevts}-${seed}
 # remove other artifacts
 cd ${proc_outdir}
 mv Events/*/*.root .
 ls . | grep -xvi "validation_plots\|.*root" | xargs rm -r
+# make validation plots
+python3 ${simdir}/make_plots.py -p ${proc_outdir}/ -v ${simdir}/validation_config.yaml
 # all done
 echo Done!

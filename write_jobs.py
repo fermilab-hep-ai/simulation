@@ -9,7 +9,7 @@ def main():
     
     with open('jobs.csv', 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
-        writer.writerow(["Process", "Seed", "Nevents"])
+        writer.writerow(["Process", "Nevents", "Seed"])
         with open('num_proc.csv', 'r') as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
             reader.__next__()
