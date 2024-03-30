@@ -2,7 +2,7 @@ import os
 import argparse
 import csv
 
-def submit_to_condor(process, nevents, seed, outdir, simdir):
+def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
 
     # parse the paths to avoid double binding.
     binding_paths = os.path.commonpath([outdir, simdir])
@@ -14,14 +14,14 @@ def submit_to_condor(process, nevents, seed, outdir, simdir):
     label = f'{process}_{nevents}_{seed}'
     os.system(f'mkdir -p {label}')
     print(f'Created Condor output directory {label}')
-
+    label = f'{simdir}/{label}/{label}'
     # src file
     script_src = open(f'{label}.src', 'w')
     script_src.write('#!/bin/bash\n')
     script_src.write(f'apptainer exec \
         --bind {binding_paths} \
         /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
-        sh {simdir}/run.sh {process} {nevents} {seed} {outdir} {simdir}\n')
+        sh {simdir}/run.sh {process} {nevents} {seed} {outdir} {simdir} {istest}\n')
 
     script_src.close()
     os.system(f'chmod a+x {label}.src')
@@ -58,17 +58,21 @@ if __name__ == '__main__':
 
     parser.add_argument('--simdir', default=os.getcwd(),
         help='path to the shared simulation folder')
-    
+
     parser.add_argument('--csv', default=None,
         help='path to the jobs.csv to use')
 
     parser.add_argument('-l','--local', action='store_true',
         help='if to be run locally')
 
+    parser.add_argument('-t','--test', action='store_true',
+        help='if testing mode (timing and plots returned)')
     args = parser.parse_args()
 
     # change permission to the submission folder so that we could copy it
     os.system(f'chmod a+x {os.getcwd()}')
+
+    istest = 'true' if args.test else 'false'
 
     if args.local:
 
@@ -87,13 +91,13 @@ if __name__ == '__main__':
         os.system(f'apptainer exec \
             --bind {binding_paths}  \
             /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
-            sh {simdir}/run.sh {args.process} {args.nevents} {args.seed} {outdir} {simdir}\n')
-        
+            sh {simdir}/run.sh {args.process} {args.nevents} {args.seed} {outdir} {simdir} {istest}\n')
+
     elif args.csv:
         with open(args.csv, 'r') as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
             reader.__next__()
             for process, nevents, seed in reader:
-                submit_to_condor(process, int(nevents), int(seed), args.outdir, args.simdir)
+                submit_to_condor(process, int(nevents), int(seed), args.outdir, args.simdir, istest)
     else:
-        submit_to_condor(args.process, args.nevents, args.seed, args.outdir, args.simdir)
+        submit_to_condor(args.process, args.nevents, args.seed, args.outdir, args.simdir, istest)

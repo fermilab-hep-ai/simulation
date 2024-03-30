@@ -7,12 +7,12 @@ nevts=$2
 seed=$3
 outdir=$4
 simdir=$5
-
-mkdir -p $outdir/tmp-${proc}-${nevts}-${seed}
-cd $outdir/tmp-${proc}-${nevts}-${seed}
-
+is_test=$6
+if ${is_test}; then
+   start_time="$(date -u +%s)"
+fi
 workdir=$(pwd)
-proc_outdir="${outdir}/${proc}-${nevts}-${seed}"
+proc_outdir="${workdir}/${proc}-${nevts}-${seed}"
 echo $proc_outdir
 
 echo "workdir: $workdir"
@@ -36,12 +36,17 @@ fi
 
 
 # run MadGraph event generation
+if ${is_test}; then
+    start_time_madgraph="$(date -u +%s)"
+fi
 mkdir -p ${proc_outdir}/
 rm -r ${proc_outdir}/*
 cp ${simdir}/processes/${proc}/${proc}_proc_card.dat ${proc_outdir}/proc_card.dat
 sed -i -e "s@_OUTDIR_@$proc_outdir@g" ${proc_outdir}/proc_card.dat
 /usr/local/MG5_aMC_v3_5_3/bin/mg5_aMC ${proc_outdir}/proc_card.dat
-
+if ${is_test}; then
+    end_time_madgraph="$(date -u +%s)"
+fi
 # write run cards
 cp ${simdir}/cards/* ${proc_outdir}/Cards/
 cp ${simdir}/processes/${proc}/${proc}_run_card.dat ${proc_outdir}/Cards/run_card.dat
@@ -91,14 +96,30 @@ sed -i -e "s@_NEVENTS_@$nevts@g" ${proc_outdir}/Cards/run_card.dat
 sed -i -e "s@_PileUpFile_@$simdir/MinBias_100k.pileup@g" ${proc_outdir}/Cards/delphes_card.dat
 sed -i -e "s@_ISEED_@$seed@g" ${proc_outdir}/Cards/run_card.dat
 
+if ${is_test}; then
+    start_time_pythia_delphes="$(date -u +%s)"
+fi
 ${proc_outdir}/bin/madevent ${proc_outdir}/Cards/launchrun.dat
-# clean up tmp directories
-rm -r $outdir/tmp-${proc}-${nevts}-${seed}
+if ${is_test}; then
+    end_time_pythia_delphes="$(date -u +%s)"
+fi
 # remove other artifacts
-cd ${proc_outdir}
-mv Events/*/*.root .
+mkdir -p ${outdir}/${proc}-${nevts}-${seed}
+mv Events/*/*.root ${outdir}/${proc}-${nevts}-${seed}
 ls . | grep -xvi "validation_plots\|.*root" | xargs rm -r
-# make validation plots
-python3 ${simdir}/make_plots.py -p ${proc_outdir}/ -v ${simdir}/validation_config.yaml
+
+if ${is_test}; then
+    # make validation plots
+    python3 ${simdir}/make_plots.py -p ${proc_outdir}/ -v ${simdir}/validation_config.yaml
+
+    # timing monitor dump
+    elapsed_madgraph="$(($end_time_madgraph-$start_time_madgraph))"
+    elapsed_pythia_delphes="$(($end_time_pythia_delphes-$start_time_pythia_delphes))"
+    elapsed_total="$(($end_time-$start_time))"
+    echo "Time madgraph: $elapsed_madgraph seconds" >> ${proc_outdir}/timing.txt
+    echo "Time pythia+delphes: $elapsed_pythia_delphes seconds" >> ${proc_outdir}/timing.txt
+    echo "Time end-to-end execution: $elapsed_total" >> ${proc_outdir}/timing.txt
+fi
+
 # all done
 echo Done!
