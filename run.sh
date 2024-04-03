@@ -115,6 +115,7 @@ if [ "$is_test" = "True" ]; then
     python3 ${simdir}/make_plots.py -p ${proc_outdir}/ -v ${simdir}/validation_config.yaml
 
     # timing monitor dump
+    end_time="$(date -u +%s)"
     elapsed_madgraph="$(($end_time_madgraph-$start_time_madgraph))"
     elapsed_pythia_delphes="$(($end_time_pythia_delphes-$start_time_pythia_delphes))"
     elapsed_total="$(($end_time-$start_time))"
