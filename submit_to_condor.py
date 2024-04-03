@@ -72,8 +72,6 @@ if __name__ == '__main__':
     # change permission to the submission folder so that we could copy it
     os.system(f'chmod a+x {os.getcwd()}')
 
-    istest = 'true' if args.test else 'false'
-
     if args.local:
 
         # folder to save the outputs of the sh script
@@ -91,13 +89,13 @@ if __name__ == '__main__':
         os.system(f'apptainer exec \
             --bind {binding_paths}  \
             /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
-            sh {simdir}/run.sh {args.process} {args.nevents} {args.seed} {outdir} {simdir} {istest}\n')
+            sh {simdir}/run.sh {args.process} {args.nevents} {args.seed} {outdir} {simdir} {args.test}\n')
 
     elif args.csv:
         with open(args.csv, 'r') as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
             reader.__next__()
             for process, nevents, seed in reader:
-                submit_to_condor(process, int(nevents), int(seed), args.outdir, args.simdir, istest)
+                submit_to_condor(process, int(nevents), int(seed), args.outdir, args.simdir, args.test)
     else:
-        submit_to_condor(args.process, args.nevents, args.seed, args.outdir, args.simdir, istest)
+        submit_to_condor(args.process, args.nevents, args.seed, args.outdir, args.simdir, args.test)
