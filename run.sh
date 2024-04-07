@@ -8,12 +8,10 @@ seed=$3
 outdir=$4
 simdir=$5
 is_test=$6
-if is_test; then
+
+if [ "$is_test" = "True" ]; then
    start_time="$(date -u +%s)"
 fi
-mkdir -p $outdir/tmp-${proc}-${nevts}-${seed}
-cd $outdir/tmp-${proc}-${nevts}-${seed}
-
 workdir=$(pwd)
 proc_outdir="${outdir}/${proc}-${nevts}-${seed}"
 echo $proc_outdir
@@ -39,7 +37,7 @@ fi
 
 
 # run MadGraph event generation
-if is_test; then
+if [ "$is_test" = "True" ]; then
     start_time_madgraph="$(date -u +%s)"
 fi
 mkdir -p ${proc_outdir}/
@@ -47,7 +45,7 @@ rm -r ${proc_outdir}/*
 cp ${simdir}/processes/${proc}/${proc}_proc_card.dat ${proc_outdir}/proc_card.dat
 sed -i -e "s@_OUTDIR_@$proc_outdir@g" ${proc_outdir}/proc_card.dat
 /usr/local/MG5_aMC_v3_5_3/bin/mg5_aMC ${proc_outdir}/proc_card.dat
-if is_test; then
+if [ "$is_test" = "True" ]; then
     end_time_madgraph="$(date -u +%s)"
 fi
 # write run cards
@@ -99,25 +97,25 @@ sed -i -e "s@_NEVENTS_@$nevts@g" ${proc_outdir}/Cards/run_card.dat
 sed -i -e "s@_PileUpFile_@$simdir/MinBias_100k.pileup@g" ${proc_outdir}/Cards/delphes_card.dat
 sed -i -e "s@_ISEED_@$seed@g" ${proc_outdir}/Cards/run_card.dat
 
-if is_test; then
+if [ "$is_test" = "True" ]; then
     start_time_pythia_delphes="$(date -u +%s)"
 fi
 ${proc_outdir}/bin/madevent ${proc_outdir}/Cards/launchrun.dat
-if is_test; then   
+if [ "$is_test" = "True" ]; then
     end_time_pythia_delphes="$(date -u +%s)"
 fi
-# clean up tmp directories
-rm -r $outdir/tmp-${proc}-${nevts}-${seed}
 # remove other artifacts
 cd ${proc_outdir}
 mv Events/*/*.root .
+
 ls . | grep -xvi "validation_plots\|.*root" | xargs rm -r
 
-if is_test; then
+if [ "$is_test" = "True" ]; then
     # make validation plots
     python3 ${simdir}/make_plots.py -p ${proc_outdir}/ -v ${simdir}/validation_config.yaml
 
     # timing monitor dump
+    end_time="$(date -u +%s)"
     elapsed_madgraph="$(($end_time_madgraph-$start_time_madgraph))"
     elapsed_pythia_delphes="$(($end_time_pythia_delphes-$start_time_pythia_delphes))"
     elapsed_total="$(($end_time-$start_time))"
@@ -126,5 +124,5 @@ if is_test; then
     echo "Time end-to-end execution: $elapsed_total" >> ${proc_outdir}/timing.txt
 fi
 
-# all done                                                                                                                                                                       
+# all done
 echo Done!

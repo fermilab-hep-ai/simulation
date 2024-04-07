@@ -14,7 +14,7 @@ def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
     label = f'{process}_{nevents}_{seed}'
     os.system(f'mkdir -p {label}')
     print(f'Created Condor output directory {label}')
-    label = f'{label}/{label}'
+    label = f'{simdir}/{label}/{label}'
     # src file
     script_src = open(f'{label}.src', 'w')
     script_src.write('#!/bin/bash\n')
@@ -58,13 +58,13 @@ if __name__ == '__main__':
 
     parser.add_argument('--simdir', default=os.getcwd(),
         help='path to the shared simulation folder')
-    
+
     parser.add_argument('--csv', default=None,
         help='path to the jobs.csv to use')
 
     parser.add_argument('-l','--local', action='store_true',
         help='if to be run locally')
-    
+
     parser.add_argument('-t','--test', action='store_true',
         help='if testing mode (timing and plots returned)')
     args = parser.parse_args()
@@ -90,7 +90,7 @@ if __name__ == '__main__':
             --bind {binding_paths}  \
             /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
             sh {simdir}/run.sh {args.process} {args.nevents} {args.seed} {outdir} {simdir} {args.test}\n')
-        
+
     elif args.csv:
         with open(args.csv, 'r') as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
