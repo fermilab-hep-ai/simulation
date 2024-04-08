@@ -1,2 +1,0 @@
-#!/bin/bash
-apptainer exec         --bind /eos/project/f/foundational-model-dataset/samples/pu200_ryliu,/afs/cern.ch/user/r/ryliu/public/simulation         /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest         sh /afs/cern.ch/user/r/ryliu/public/simulation/run.sh tt0123j_5f_ckm_LO_MLM_leptonic 2000 30000 /eos/project/f/foundational-model-dataset/samples/pu200_ryliu /afs/cern.ch/user/r/ryliu/public/simulation True
