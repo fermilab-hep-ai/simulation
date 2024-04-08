@@ -1,0 +1,11 @@
+executable = /afs/cern.ch/user/r/ryliu/public/simulation/logs/tt0123j_5f_ckm_LO_MLM_leptonic-2000-30003/tt0123j_5f_ckm_LO_MLM_leptonic-2000-30003.src
+universe = vanilla
+requirements = (Arch == "X86_64") && (OpSys == "LINUX")
+request_cpus = 1
+request_memory = 4G
+request_disk = 10000000
+output = /afs/cern.ch/user/r/ryliu/public/simulation/logs/tt0123j_5f_ckm_LO_MLM_leptonic-2000-30003/tt0123j_5f_ckm_LO_MLM_leptonic-2000-30003.out
+error = /afs/cern.ch/user/r/ryliu/public/simulation/logs/tt0123j_5f_ckm_LO_MLM_leptonic-2000-30003/tt0123j_5f_ckm_LO_MLM_leptonic-2000-30003.err
+log = /afs/cern.ch/user/r/ryliu/public/simulation/logs/tt0123j_5f_ckm_LO_MLM_leptonic-2000-30003/tt0123j_5f_ckm_LO_MLM_leptonic-2000-30003.log
++MaxRuntime = 500000
+queue

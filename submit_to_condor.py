@@ -10,10 +10,10 @@ def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
         binding_paths = f"{outdir},{simdir}"
 
     # folder to save the outputs of each condor job (file.out, file.log, file.err)
-    label = os.path.join(outdir, f'{process}_{nevents}_{seed}', "condor", )
-    os.system(f'mkdir -p {label}')
-    print(f'Created Condor output directory {process}_{nevents}_{seed}')
-    
+    label = f'{process}-{nevents}-{seed}'
+    os.system(f'mkdir -p logs/{label}')
+    print(f'Created Condor output directory {label}')
+    label = f'{simdir}/logs/{label}/{label}'
     # src file
     script_src = open(f'{label}.src', 'w')
     script_src.write('#!/bin/bash\n')
@@ -29,6 +29,10 @@ def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
     script_condor = open(f'{label}.condor', 'w')
     script_condor.write(f'executable = {label}.src\n')
     script_condor.write('universe = vanilla\n')
+    script_condor.write('requirements = (Arch == "X86_64") && (OpSys == "LINUX")\n')
+    script_condor.write('request_cpus = 1\n')
+    script_condor.write('request_memory = 4G\n')
+    script_condor.write('request_disk = 10000000\n')
     script_condor.write(f'output = {label}.out\n')
     script_condor.write(f'error = {label}.err\n')
     script_condor.write(f'log = {label}.log\n')
