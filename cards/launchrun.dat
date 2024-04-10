@@ -1,4 +1,4 @@
-launch
+launch --nb_core=1
 shower=Pythia8
 detector=Delphes
 done
