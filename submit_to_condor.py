@@ -7,24 +7,18 @@ def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
     # create outdir
     outdir = os.path.join(outdir, f"{process}-{nevents}-{seed}")
     os.makedirs(outdir, exist_ok=True)
-
-    # parse the paths to avoid double binding.
-    binding_paths = os.path.commonpath([outdir, simdir])
-    if binding_paths == "/":
-        binding_paths = f"{outdir},{simdir}"
+    outdir = os.path.realpath(outdir)
 
     # folder to save the outputs of each condor job (file.out, file.log, file.err)
     label = f'{process}-{nevents}-{seed}'
     os.makedirs(os.path.join("logs", label), exist_ok=True)
-    print(f'Created Condor output directory {label}')
-    label = f'{simdir}/logs/{label}/{label}'
+    print(f"Created Condor output directory {label}")
+    label = f"{simdir}/logs/{label}/{label}"
     # src file
     script_src = open(f'{label}.src', 'w')
-    script_src.write('#!/bin/bash\n')
-    script_src.write(f'apptainer exec \
-        --bind {binding_paths} \
-        /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest \
-        sh {simdir}/run.sh {process} {nevents} {seed} {outdir} {simdir} {istest}\n')
+    script_src.write("#!/bin/bash\n")
+    script_src.write(f"apptainer exec --bind {simdir} /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
+    script_src.write(f"mv outdir/* {outdir}\n")
 
     script_src.close()
     os.system(f'chmod a+x {label}.src')
