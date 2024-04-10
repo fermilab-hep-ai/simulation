@@ -105,9 +105,6 @@ if [ "$is_test" = "True" ]; then
 fi
 
 if [ "$is_test" = "True" ]; then
-    # make validation plots
-    python3 ${simdir}/make_plots.py -p outdir/ -v ${simdir}/validation_config.yaml
-
     # timing monitor dump
     end_time="$(date -u +%s)"
     elapsed_madgraph="$(($end_time_madgraph-$start_time_madgraph))"
