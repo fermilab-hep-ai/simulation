@@ -16,16 +16,22 @@ wget https://cernbox.cern.ch/remote.php/dav/public-files/IyG0C0tfkXW7ifF/MinBias
 ### Running sample generation locally
 Finally, run the `run.sh` command with the docker image: (you can also build the image using the dockerfile under `/docker`)
 ```
-apptainer exec --bind $outdir,$simdir /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest sh {simdir}/run.sh $process $nevents $seed $outdir $simdir
+apptainer exec --bind $simdir /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest sh $simdir/run.sh $process $nevents $seed $simdir $istest
 ```
-`$outdir` should NOT contain the process name you want to run. A folder will be automatically created for you. `$simdir` should be the directory where the simulation repository is. Note that it is a known bug that if `$outdir` and `$simdir` are both on eos, OS Error 35 can be triggered and should be avoided 
-
+The script will create two directories `tmpdir` and `outdir` in current working directory. The output files can be found in `ourdir` and `tmpdir` contains all artifact.
 
 ## Submitting sample generation to Condor
 Make sure that you followed step 1 and 2 of the setup, then use the `submit_to_condor.py`:
 ```
-python3 submit_to_condor.py -o $outdir -p $proc -n $nevents -t $ntoys --simdir $simdir
+submit_to_condor.py [-h] -o OUTDIR [-n NEVENTS] [-p PROCESS] [--seed SEED] [--simdir SIMDIR] [--csv CSV] [-t]
 ```
+
+Or, alternatively, run:
+
+```
+write_jobs.py [-h] [-n NEVENT_PER_JOB] [-i SEED_INCREMENT]
+```
+to create a csv file containing all job specification, then use `--csv` option with `jobs.csv` generated. You can change the number of events per process in `num_proc.csv`.
 
 Use `-o` flag to specify the location where you have a lot of free space to store the output. As suggestion, you could locate the `outdir` in your `eos` folder.
 
@@ -33,11 +39,13 @@ Use `-p` flag to specify the name of the process you want to run from the availa
 
 Use `-n` flag to specify number of events to be generated (1k by default).
 
-Use `-t` flag to specify how many condor jobs you would like to submit at once (1 by default). Each of the job will generate `nevents` number of events.
+Use `-t` flag to indicate that the job should be in testing mode, which will write timing results and validation plots.
 
-Use `--simdir` flag to specify location of `simulation` folder that will be used by condor to pick up the cards and processes details. And your `simdir` at your `afs` folder to avoid OS Error 35 error mentioned above. By default, `simdir` will point to your `os.getcwd()`, so as a suggestion checkout the `simulation` repo to your `afs` and run condor submission from there without specifying the `--simdir` flag.
+Use `--simdir` flag to specify location of `simulation` folder that will be used by condor to pick up the cards and processes details.
 
-Set the `-l` flag if you want to run locally, otherwise it will be submitted as a condor job.
+Use `--csv` flag to specify the csv job configuration file to use, which can be generated with `write_jobs.py`.
+
+The log files will be written to `logs/` in the folder `$proccess-$nevents-$seed`.
 
 ### Checking job status
 
