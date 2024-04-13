@@ -15,16 +15,7 @@ def main():
     parser.add_argument("--val-config", "-v", type=str, default="./validation_config.yaml")
     args = parser.parse_args()
 
-    root_file = None
-    for file in os.listdir(os.path.join(args.path)):
-        if fnmatch(file, "*.root"):
-            root_file = file
-            break
-    if root_file is None:
-        raise RuntimeError("Cannot Find Root Event!")
-    print("Found the following event record: ", root_file)
-
-    event = uproot.open(os.path.join(args.path, root_file))["Delphes;1"]
+    event = uproot.open(os.path.join(args.path, "event.root"))["Delphes;1"]
 
     with open(args.val_config) as f:
         val_config = yaml.safe_load(f)
