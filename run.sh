@@ -104,7 +104,14 @@ if [ "$is_test" = "True" ]; then
     end_time_pythia_delphes="$(date -u +%s)"
 fi
 
+
+# transfer generated events
+mv tmpdir/Events/*/*.root outdir/event.root
+
 if [ "$is_test" = "True" ]; then
+    # make validation plots
+    python3 ${simdir}/make_plots.py -p outdir/ -v ${simdir}/validation_config.yaml
+
     # timing monitor dump
     end_time="$(date -u +%s)"
     elapsed_madgraph="$(($end_time_madgraph-$start_time_madgraph))"
@@ -114,9 +121,6 @@ if [ "$is_test" = "True" ]; then
     echo "Time pythia+delphes: $elapsed_pythia_delphes seconds" >> outdir/timing.txt
     echo "Time end-to-end execution: $elapsed_total" >> outdir/timing.txt
 fi
-
-# transfer generated events
-mv tmpdir/Events/*/*.root outdir/event.root
 
 # all done
 echo Done!
