@@ -5,6 +5,7 @@ __pycache__/
 
 *~
 
+
 # C extensions
 *.so
 
@@ -146,3 +147,6 @@ nsqso_born.inc
 logs/*
 # Lxplus artifacts
 *.cc
+
+tmpdir/*
+output/*
