@@ -2560,7 +2560,8 @@ module Efficiency L1TElectronTrackingEfficiency {
           (abs(eta) <= 2.4) * (pt > 4 && pt <= 6) * (0.80) + \
           (abs(eta) <= 2.4) * (pt > 6 && pt <= 10) * (0.85) + \
           (abs(eta) <= 2.4) * (pt > 10 && pt <= 20) * (0.88) + \
-          (abs(eta) <= 2.4) * (pt > 20) * (0.92) + \
+          (abs(eta) <= 2.4) * (pt > 20 && pt <= 40) * (0.90) + \
+          (abs(eta) <= 2.4) * (pt > 40) * (0.93) + \
           (abs(eta) > 2.4) * (0.00)
   }
 }
@@ -2579,7 +2580,8 @@ module Efficiency L1TMuonTrackingEfficiency {
           (abs(eta) <= 2.4) * (pt > 4 && pt <= 6) * (0.80) + \
           (abs(eta) <= 2.4) * (pt > 6 && pt <= 10) * (0.85) + \
           (abs(eta) <= 2.4) * (pt > 10 && pt <= 20) * (0.88) + \
-          (abs(eta) <= 2.4) * (pt > 20) * (0.92) + \
+          (abs(eta) <= 2.4) * (pt > 20 && pt <= 40) * (0.90) + \
+          (abs(eta) <= 2.4) * (pt > 40) * (0.93) + \
           (abs(eta) > 2.4) * (0.00)
 
   }
