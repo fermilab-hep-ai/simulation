@@ -2536,11 +2536,13 @@ module Efficiency L1TChargedHadronTrackingEfficiency {
   # tracking efficiency formula for charged hadrons
   set EfficiencyFormula {
       (pt <= 2.0) * (0.00) + \
-          (abs(eta) <= 2.4) * (pt > 2 && pt <= 4) * (0.72) + \
-          (abs(eta) <= 2.4) * (pt > 4 && pt <= 6) * (0.80) + \
-          (abs(eta) <= 2.4) * (pt > 6 && pt <= 10) * (0.85) + \
-          (abs(eta) <= 2.4) * (pt > 10 && pt <= 20) * (0.88) + \
-          (abs(eta) <= 2.4) * (pt > 20) * (0.92) + \
+          (abs(eta) <= 2.4) * (pt > 2 && pt <= 3) * (0.59) + \
+          (abs(eta) <= 2.4) * (pt > 3 && pt <= 4) * (0.71) + \
+          (abs(eta) <= 2.4) * (pt > 4 && pt <= 5) * (0.76) + \
+          (abs(eta) <= 2.4) * (pt > 5 && pt <= 8) * (0.82) + \
+          (abs(eta) <= 2.4) * (pt > 8 && pt <= 15) * (0.90) + \
+          (abs(eta) <= 2.4) * (pt > 15 && pt <= 25) * (0.92) + \
+          (abs(eta) <= 2.4) * (pt > 25) * (0.93) + \
           (abs(eta) > 2.4) * (0.00)
   }
 }
@@ -2556,12 +2558,13 @@ module Efficiency L1TElectronTrackingEfficiency {
   # tracking efficiency formula for electrons
   set EfficiencyFormula {
       (pt <= 2.0) * (0.00) + \
-          (abs(eta) <= 2.4) * (pt > 2 && pt <= 4) * (0.72) + \
-          (abs(eta) <= 2.4) * (pt > 4 && pt <= 6) * (0.80) + \
-          (abs(eta) <= 2.4) * (pt > 6 && pt <= 10) * (0.85) + \
-          (abs(eta) <= 2.4) * (pt > 10 && pt <= 20) * (0.88) + \
-          (abs(eta) <= 2.4) * (pt > 20 && pt <= 40) * (0.90) + \
-          (abs(eta) <= 2.4) * (pt > 40) * (0.93) + \
+          (abs(eta) <= 2.4) * (pt > 2 && pt <= 3) * (0.42) + \
+          (abs(eta) <= 2.4) * (pt > 3 && pt <= 4) * (0.58) + \
+          (abs(eta) <= 2.4) * (pt > 4 && pt <= 5) * (0.63) + \
+          (abs(eta) <= 2.4) * (pt > 5 && pt <= 8) * (0.71) + \
+          (abs(eta) <= 2.4) * (pt > 8 && pt <= 15) * (0.80) + \
+          (abs(eta) <= 2.4) * (pt > 15 && pt <= 25) * (0.86) + \
+          (abs(eta) <= 2.4) * (pt > 25) * (0.89) + \
           (abs(eta) > 2.4) * (0.00)
   }
 }
@@ -2576,14 +2579,12 @@ module Efficiency L1TMuonTrackingEfficiency {
   # tracking efficiency formula for muons
   set EfficiencyFormula {
       (pt <= 2.0) * (0.00) + \
-          (abs(eta) <= 2.4) * (pt > 2 && pt <= 4) * (0.72) + \
-          (abs(eta) <= 2.4) * (pt > 4 && pt <= 6) * (0.80) + \
-          (abs(eta) <= 2.4) * (pt > 6 && pt <= 10) * (0.85) + \
-          (abs(eta) <= 2.4) * (pt > 10 && pt <= 20) * (0.88) + \
-          (abs(eta) <= 2.4) * (pt > 20 && pt <= 40) * (0.90) + \
-          (abs(eta) <= 2.4) * (pt > 40) * (0.93) + \
+          (abs(eta) <= 2.4) * (pt > 2 && pt <= 3) * (0.93) + \
+          (abs(eta) <= 2.4) * (pt > 3 && pt <= 4) * (0.96) + \
+          (abs(eta) <= 2.4) * (pt > 4 && pt <= 5) * (0.97) + \
+          (abs(eta) <= 2.4) * (pt > 5 && pt <= 10) * (0.98) + \
+          (abs(eta) <= 2.4) * (pt > 10) * (1.00) + \
           (abs(eta) > 2.4) * (0.00)
-
   }
 }
 
@@ -2603,7 +2604,9 @@ module MomentumSmearing L1TChargedHadronMomentumSmearing {
   #
   #  By Unknown author on: 2017-06-30.17:03:00
   #
-  set ResolutionFormula {    (abs(eta) >= 0.0000 && abs(eta) < 0.2000) * (pt >= 0.0000 && pt < 1.0000) * (0.00457888) + \
+  set ResolutionFormula {    
+    2 * (
+     (abs(eta) >= 0.0000 && abs(eta) < 0.2000) * (pt >= 0.0000 && pt < 1.0000) * (0.00457888) + \
      (abs(eta) >= 0.0000 && abs(eta) < 0.2000) * (pt >= 1.0000 && pt < 10.0000) * (0.004579 + (pt-1.000000)* 0.000045) + \
      (abs(eta) >= 0.0000 && abs(eta) < 0.2000) * (pt >= 10.0000 && pt < 100.0000) * (0.004983 + (pt-10.000000)* 0.000047) + \
      (abs(eta) >= 0.0000 && abs(eta) < 0.2000) * (pt >= 100.0000) * (0.009244*pt/100.000000) + \
@@ -2683,6 +2686,7 @@ module MomentumSmearing L1TChargedHadronMomentumSmearing {
      (abs(eta) >= 3.8000 && abs(eta) < 4.0000) * (pt >= 1.0000 && pt < 10.0000) * (0.134159 + (pt-1.000000)* -0.008283) + \
      (abs(eta) >= 3.8000 && abs(eta) < 4.0000) * (pt >= 10.0000 && pt < 100.0000) * (0.059612 + (pt-10.000000)* 0.000111) + \
      (abs(eta) >= 3.8000 && abs(eta) < 4.0000) * (pt >= 100.0000) * (0.069617*pt/100.000000)
+    )
   }
 
 
@@ -2725,7 +2729,7 @@ module MomentumSmearing L1TMuonMomentumSmearing {
   # up to |eta| < 2.8 take measurement from tracking + muon chambers
   # for |eta| > 2.8 and pT < 5.0 take measurement from tracking alone taken from
   # http://mersi.web.cern.ch/mersi/layouts/.private/Baseline_tilted_200_Pixel_1_1_1/index.html
-  source muonMomentumResolution.tcl
+  source muonMomentumResolutionL1T.tcl
 }
 
 
@@ -3053,19 +3057,19 @@ module RunPUPPI L1TRunPUPPIBase {
   set UseNoLep          false
 
   ## define puppi algorithm parameters (more than one for the same eta region is possible)
-  add EtaMinBin           0.0   1.5   4.0
-  add EtaMaxBin           1.5   4.0   10.0
-  add PtMinBin            0.0   0.0   0.0
-  add ConeSizeBin         0.2   0.2   0.2
-  add RMSPtMinBin         0.1   0.5   0.5
-  add RMSScaleFactorBin   1.0   1.0   1.0
-  add NeutralMinEBin      0.2   0.2   0.5
-  add NeutralPtSlope      0.006 0.013 0.067
-  add ApplyCHS            true  true  true
-  add UseCharged          true  true  false
-  add ApplyLowPUCorr      true  true  true
-  add MetricId            5     5     5
-  add CombId              0     0     0
+  add EtaMinBin           0.0   1.5   2.5   3.0
+  add EtaMaxBin           1.5   2.5   3.0   10.0 
+  add PtMinBin            0.0   0.0   0.0   0.0
+  add ConeSizeBin         0.3   0.3   0.3   0.3
+  add RMSPtMinBin         0.1   0.5   0.5   0.5
+  add RMSScaleFactorBin   1.0   1.0   1.0   1.0
+  add NeutralMinEBin      1.0   1.0   4.0   10.0
+  add NeutralPtSlope      0.006 0.013 0.03  0.03
+  add ApplyCHS            true  true  true  true
+  add UseCharged          true  true  false false
+  add ApplyLowPUCorr      true  true  true  true
+  add MetricId            5     5     5     5
+  add CombId              0     0     0.    0 
 
   ## output name
   set OutputArray         PuppiParticles
