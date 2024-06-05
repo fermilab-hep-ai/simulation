@@ -26,6 +26,7 @@ def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
     script_src.write("fi\n")   
     script_src.write(f"apptainer exec --bind {simdir} /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
     script_src.write(f"xrdcp -r outdir/* {outdir}/{label}\n") 
+    script_src.write(f"xrdcp -r tmpdir {outdir}/{label}\n") 
     script_src.close()
 
     os.system(f'chmod a+x {log_path}/{label}.src')

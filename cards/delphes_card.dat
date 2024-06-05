@@ -2605,7 +2605,7 @@ module MomentumSmearing L1TChargedHadronMomentumSmearing {
   #  By Unknown author on: 2017-06-30.17:03:00
   #
   set ResolutionFormula {    
-    2 * (
+    2 * ( \
      (abs(eta) >= 0.0000 && abs(eta) < 0.2000) * (pt >= 0.0000 && pt < 1.0000) * (0.00457888) + \
      (abs(eta) >= 0.0000 && abs(eta) < 0.2000) * (pt >= 1.0000 && pt < 10.0000) * (0.004579 + (pt-1.000000)* 0.000045) + \
      (abs(eta) >= 0.0000 && abs(eta) < 0.2000) * (pt >= 10.0000 && pt < 100.0000) * (0.004983 + (pt-10.000000)* 0.000047) + \
@@ -2685,7 +2685,7 @@ module MomentumSmearing L1TChargedHadronMomentumSmearing {
      (abs(eta) >= 3.8000 && abs(eta) < 4.0000) * (pt >= 0.0000 && pt < 1.0000) * (0.13415929) + \
      (abs(eta) >= 3.8000 && abs(eta) < 4.0000) * (pt >= 1.0000 && pt < 10.0000) * (0.134159 + (pt-1.000000)* -0.008283) + \
      (abs(eta) >= 3.8000 && abs(eta) < 4.0000) * (pt >= 10.0000 && pt < 100.0000) * (0.059612 + (pt-10.000000)* 0.000111) + \
-     (abs(eta) >= 3.8000 && abs(eta) < 4.0000) * (pt >= 100.0000) * (0.069617*pt/100.000000)
+     (abs(eta) >= 3.8000 && abs(eta) < 4.0000) * (pt >= 100.0000) * (0.069617*pt/100.000000) \
     )
   }
 
@@ -3069,7 +3069,7 @@ module RunPUPPI L1TRunPUPPIBase {
   add UseCharged          true  true  false false
   add ApplyLowPUCorr      true  true  true  true
   add MetricId            5     5     5     5
-  add CombId              0     0     0.    0 
+  add CombId              0     0     0     0 
 
   ## output name
   set OutputArray         PuppiParticles
