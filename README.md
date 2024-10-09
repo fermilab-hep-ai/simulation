@@ -2,33 +2,39 @@
 
 ### Setup 1st step
 To use the package, first run:
-```
-git clone https://github.com/ryanliu30/simulation.git
+```bash
+git clone https://github.com/fermilab-hep-ai/simulation.git
 cd simulation
 ```
 
 ### Setup 2nd step
 Then, download the MinBias events:
-```
+```bash
 wget https://cernbox.cern.ch/remote.php/dav/public-files/IyG0C0tfkXW7ifF/MinBias_100k.pileup
 ```
 
-### Running sample generation locally
-Finally, run the `run.sh` command with the docker image: (you can also build the image using the dockerfile under `/docker`)
+### Building the Docker image (optional)
+The Docker image can be rebuilt manually if needed by doing
+```bash
+docker build . -f docker/Dockerfile -t jmduarte/mapyde
 ```
+
+### Running sample generation locally
+Finally, run the `run.sh` command with the Docker image
+```bash
 apptainer exec --bind $simdir /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest sh $simdir/run.sh $process $nevents $seed $simdir $istest
 ```
 The script will create two directories `tmpdir` and `outdir` in current working directory. The output files can be found in `ourdir` and `tmpdir` contains all artifact.
 
 ## Submitting sample generation to Condor
 Make sure that you followed step 1 and 2 of the setup, then use the `submit_to_condor.py`:
-```
+```bash
 submit_to_condor.py [-h] -o OUTDIR [-n NEVENTS] [-p PROCESS] [--seed SEED] [--simdir SIMDIR] [--csv CSV] [-t]
 ```
 
 Or, alternatively, run:
 
-```
+```bash
 write_jobs.py [-h] [-n NEVENT_PER_JOB] [-i SEED_INCREMENT]
 ```
 to create a csv file containing all job specification, then use `--csv` option with `jobs.csv` generated. You can change the number of events per process in `num_proc.csv`.
@@ -50,12 +56,12 @@ The log files will be written to `logs/` in the folder `$proccess-$nevents-$seed
 ### Checking job status
 
 To check the status of your condor jobs use
-```
+```bash
 condor_q
 ```
 
 If for whatever reason you would like to remove submitted jobs, use
-```
+```bash
 condor_rm $jobID
 ```
 (the `jobID` can be found out by running `condor_q` command)
