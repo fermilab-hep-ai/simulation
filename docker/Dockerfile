@@ -1,4 +1,4 @@
-ARG BUILDER_IMAGE=delphes/ubuntu:22.04
+ARG BUILDER_IMAGE=ghcr.io/scipp-atlas/mapyde/delphes
 FROM ${BUILDER_IMAGE} as builder
 ARG DELPHES_VERSION=3.5.0
 ARG LHAPDF_VERSION=6.3.0
@@ -12,18 +12,16 @@ ARG FASTJET_VERSION=3.3.4
 ARG BOOST_VERSION=1.76.0
 ARG MG5aMC_PY8_INTERFACE_VERSION=1.3
 ARG PYTHON_VERSION=3.8.10
-LABEL org.opencontainers.image.version=${DELPHES_VERSION}
-LABEL org.opencontainers.image.ref.name=latest
 
 USER root
-WORKDIR /home
+WORKDIR /usr/local
 
 SHELL [ "/bin/bash", "-c" ]
 
-RUN mkdir -p /usr/local/share/delphes && \
+RUN rm -rf /usr/local/share/delphes && \
+    mkdir -p /usr/local/share/delphes && \
     cd /usr/local/share/delphes && \
-    wget http://cp3.irmp.ucl.ac.be/downloads/Delphes-${DELPHES_VERSION}.tar.gz && \
-    tar -zxf Delphes-${DELPHES_VERSION}.tar.gz && \
+    git clone https://github.com/fermilab-hep-ai/delphes.git -b ${DELPHES_VERSION}-puppiw Delphes-${DELPHES_VERSION} && \
     cd Delphes-${DELPHES_VERSION} && \
     make -j$(($(nproc) - 1)) && \
     cd ../ && \
@@ -31,16 +29,6 @@ RUN mkdir -p /usr/local/share/delphes && \
 
 ENV DELPHES_PATH="/usr/local/share/delphes/delphes"
 ENV ROOT_INCLUDE_PATH=${ROOT_INCLUDE_PATH}:${DELPHES_PATH}:${DELPHES_PATH}/external
-
-RUN apt-get -qq -y update && \
-    apt-get -y install python3 python3-pip && \
-    curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py && \
-    python2 get-pip.py && \
-    python -m pip install --no-cache-dir setuptools wheel && \
-    python -m pip install --no-cache-dir pyhepmc-ng pybind11 numpy graphviz particle pytest
-
-USER root
-WORKDIR /usr/local
 
 RUN apt-get -qq -y update && \
     apt-get -qq -y install \
