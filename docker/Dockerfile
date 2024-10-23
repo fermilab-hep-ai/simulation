@@ -1,5 +1,6 @@
 ARG BUILDER_IMAGE=ghcr.io/scipp-atlas/mapyde/delphes
 FROM ${BUILDER_IMAGE} as builder
+ARG DELPHES_VERSION=3.5.0
 ARG LHAPDF_VERSION=6.3.0
 ARG PYTHIA_VERSION=8310
 ARG FASTJET_VERSION=3.3.4
@@ -16,6 +17,18 @@ USER root
 WORKDIR /usr/local
 
 SHELL [ "/bin/bash", "-c" ]
+
+RUN rm -rf /usr/local/share/delphes && \
+    mkdir -p /usr/local/share/delphes && \
+    cd /usr/local/share/delphes && \
+    git clone https://github.com/fermilab-hep-ai/delphes.git -b ${DELPHES_VERSION}-puppiw Delphes-${DELPHES_VERSION} && \
+    cd Delphes-${DELPHES_VERSION} && \
+    make -j$(($(nproc) - 1)) && \
+    cd ../ && \
+    ln -s Delphes-${DELPHES_VERSION} ./delphes
+
+ENV DELPHES_PATH="/usr/local/share/delphes/delphes"
+ENV ROOT_INCLUDE_PATH=${ROOT_INCLUDE_PATH}:${DELPHES_PATH}:${DELPHES_PATH}/external
 
 RUN apt-get -qq -y update && \
     apt-get -qq -y install \
