@@ -15,6 +15,9 @@ fi
 workdir=$(pwd)
 mkdir tmpdir
 mkdir outdir
+mkdir tmpdir/Cards
+mkdir tmpdir/Events
+mkdir tmpdir/bin
 
 echo "workdir: $workdir"
 echo "args: $@"
@@ -43,7 +46,9 @@ fi
 
 cp ${simdir}/processes/${proc}/${proc}_proc_card.dat tmpdir/proc_card.dat
 sed -i -e "s@_OUTDIR_@tmpdir@g" tmpdir/proc_card.dat
-/usr/local/MG5_aMC_v3_5_3/bin/mg5_aMC tmpdir/proc_card.dat
+/usr/local/MG5_aMC_v3_5_6/bin/mg5_aMC tmpdir/proc_card.dat
+ls -l tmpdir/bin/
+ls tmpdir/bin/madevent
 if [ "$is_test" = "True" ]; then
     end_time_madgraph="$(date -u +%s)"
 fi
