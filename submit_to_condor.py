@@ -24,7 +24,18 @@ def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
     script_src.write("  echo create output directory failed\n")
     script_src.write("  exit 1\n")
     script_src.write("fi\n")   
+
+    # This is for Delphes downloaded from cvmfs
     script_src.write(f"apptainer exec --bind {simdir} /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
+    
+    # This is for Delphes downloaded from dockerhub (not used unless testing)
+    #script_src.write(f"apptainer exec --bind {simdir} docker://jmduarte/mapyde sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
+    
+    # These are for custom local delphes config (not used unless testing)
+    #script_src.write(f"{simdir}/DelphesHepMC3 {simdir}/cards/delphes_card_CMS.tcl {outdir}/{label}/output.root {simdir}/input_file.hepmc\n")
+    #script_src.write(f"sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
+    
+    
     script_src.write(f"xrdcp -r outdir/* {outdir}/{label}\n") 
     script_src.close()
 
