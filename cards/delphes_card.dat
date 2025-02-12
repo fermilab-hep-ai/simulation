@@ -7113,6 +7113,8 @@ module TreeWriter TreeWriter {
   add Branch ECal/eflowPhotons EFlowPhoton Tower
   add Branch HCal/eflowNeutralHadrons EFlowNeutralHadron Tower
 
+  #add Branch RunPUPPIMerger/PuppiParticles EFlow ParticleFlowCandidate
+
   add Branch EFlowMerger/eflow EFlow ParticleFlowCandidate
   add Branch EFlowMergerCHS/eflow EFlowCHS ParticleFlowCandidate
 
@@ -7139,37 +7141,5 @@ module TreeWriter TreeWriter {
   add Branch PuppiMissingET/momentum PuppiMissingET MissingET
   add Branch GenPileUpMissingET/momentum GenPileUpMissingET MissingET
   add Branch ScalarHT/energy ScalarHT ScalarHT
-
-  # L1T
-
-  add Branch L1THCal/eflowTracks L1TEFlowTrack Track
-  add Branch L1TECal/eflowPhotons L1TEFlowPhoton Tower
-  add Branch L1THCal/eflowNeutralHadrons L1TEFlowNeutralHadron Tower
-
-  add Branch L1TEFlowMerger/eflow L1TEFlow ParticleFlowCandidate
-  add Branch L1TEFlowMergerCHS/eflow L1TEFlowCHS ParticleFlowCandidate
-
-  add Branch L1TPhotonLooseID/photons L1TPhotonLoose Photon
-  add Branch L1TPhotonTightID/photons L1TPhotonTight Photon
-
-  add Branch L1TElectronEfficiency/electrons L1TElectron Electron
-  add Branch L1TMuonLooseIdEfficiency/muons L1TMuonLoose Muon
-  add Branch L1TMuonTightIdEfficiency/muons L1TMuonTight Muon
-
-  add Branch L1TPhotonEfficiencyCHS/photons L1TPhotonCHS Photon
-  add Branch L1TElectronEfficiencyCHS/electrons L1TElectronCHS Electron
-  add Branch L1TMuonLooseIdEfficiencyCHS/muons L1TMuonLooseCHS Muon
-  add Branch L1TMuonTightIdEfficiencyCHS/muons L1TMuonTightCHS Muon
-
-  add Branch L1TJetEnergyScale/jets L1TJet Jet
-  add Branch L1TJetEnergyScalePUPPI/jets L1TJetPUPPI Jet
-  add Branch L1TJetEnergyScaleAK8/jets L1TJetAK8 Jet
-  add Branch L1TJetEnergyScalePUPPIAK8/jets L1TJetPUPPIAK8 Jet
-
-  add Branch L1TRho/rho L1TRho Rho
-
-  add Branch L1TMissingET/momentum L1TMissingET MissingET
-  add Branch L1TPuppiMissingET/momentum L1TPuppiMissingET MissingET
-  add Branch L1TScalarHT/energy ScalarHT L1TScalarHT
 
 }
