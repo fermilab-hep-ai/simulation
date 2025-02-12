@@ -18,6 +18,10 @@ mkdir outdir
 mkdir tmpdir/Cards
 mkdir tmpdir/Events
 mkdir tmpdir/bin
+mkdir tmpdir/QCD
+mkdir tmpdir/QCD/results
+BASEDIR=$(pwd)
+echo "BASEDIR: $BASEDIR"
 
 echo "workdir: $workdir"
 echo "args: $@"
@@ -90,6 +94,18 @@ if [ -e ${simdir}/processes/${proc}/${proc}_madspin_card.dat ]; then
   sed -i -e "s@_OUTDIR_@tmpdir@g" tmpdir/Cards/madspin_card.dat
 fi
 
+if [ -e ${simdir}/main43.cc ]; then
+  mkdir -p tmpdir/QCD/  # Create the directory if it doesn't exist
+  mkdir -p tmpdir/QCD/results/  # Create the directory if it doesn't exist
+  cp ${simdir}/main43.cc tmpdir/QCD/main43.cc
+  PYTHIA8=/usr/local HEPMC_DIR=/usr/local LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH g++ -o tmpdir/QCD/main43 tmpdir/QCD/main43.cc \
+      -I/usr/local/include/Pythia8 -L/usr/local/lib -lpythia8 \
+      -I/usr/local/include/HepMC -L/usr/local/lib -lHepMC \
+      -ldl -std=c++11
+  LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH ./tmpdir/QCD/main43 PileUp_MC ${seed}
+  /usr/local/share/delphes/Delphes-3.5.0/hepmc2pileup tmpdir/QCD/results/SoftQCD.pileup tmpdir/QCD/results/hepmcout_SoftQCD_MC_${seed}.data
+fi
+
 echo "set nevents ${nevts}" >> tmpdir/Cards/launchrun.dat
 if [ -e ${simdir}/processes/${proc}/${proc}_customizecards.dat ]; then
         cat ${simdir}/processes/${proc}/${proc}_customizecards.dat | sed '/^$/d;/^#.*$/d' >> tmpdir/Cards/launchrun.dat
@@ -97,8 +113,22 @@ if [ -e ${simdir}/processes/${proc}/${proc}_customizecards.dat ]; then
 fi
 echo "done" >> tmpdir/Cards/launchrun.dat
 
+# change delphes source code delphes/external/PUPPI/PuppiContainer.cc and replace if(pWeight == 0) continue; with //if(pWeight == 0) continue;
+# sed -i -e "s@if(pWeight == 0) continue;@//if(pWeight == 0) continue;@g" /usr/local/share/delphes/Delphes-3.5.0/external/PUPPI/PuppiContainer.cc
+
 sed -i -e "s@_NEVENTS_@$nevts@g" tmpdir/Cards/run_card.dat
-sed -i -e "s@_PileUpFile_@$simdir/MinBias_100k.pileup@g" tmpdir/Cards/delphes_card.dat
+## Using 100k pileup file ##
+#sed -i -e "s@_PileUpFile_@$simdir/MinBias_100k.pileup@g" tmpdir/Cards/delphes_card.dat
+
+#sed -i -e "s@_PileUpFile_@/afs/cern.ch/user/e/emoreno/foundation/simulation/results/SoftQCD.pileup@g" tmpdir/Cards/delphes_card.dat
+
+# list contents of tmpdir/QCD/results
+
+## Using on-the-fly pileup from  tmpdir/QCD/results/SoftQCD.pileup##
+sed -i -e "s@_PileUpFile_@$workdir/tmpdir/QCD/results/SoftQCD.pileup@g" tmpdir/Cards/delphes_card.dat
+sed -
+echo xxxxxxxxx
+cat tmpdir/Cards/delphes_card.dat
 sed -i -e "s@_ISEED_@$seed@g" tmpdir/Cards/run_card.dat
 
 if [ "$is_test" = "True" ]; then
@@ -129,3 +159,5 @@ fi
 
 # all done
 echo Done!
+
+#rm -rf /eos/user/e/emoreno/foundational_model/pileup_files/SoftQCDtest.pileup
