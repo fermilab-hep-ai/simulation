@@ -12,6 +12,7 @@ ARG FASTJET_VERSION=3.3.4
 ARG BOOST_VERSION=1.76.0
 ARG MG5aMC_PY8_INTERFACE_VERSION=1.3
 ARG PYTHON_VERSION=3.8.10
+ARG COMMIT_HASH=6360ca8ed0ff018735e3bfbc815ea2c4b23adfa9
 
 USER root
 WORKDIR /usr/local
@@ -21,8 +22,9 @@ SHELL [ "/bin/bash", "-c" ]
 RUN rm -rf /usr/local/share/delphes && \
     mkdir -p /usr/local/share/delphes && \
     cd /usr/local/share/delphes && \
-    git clone https://github.com/fermilab-hep-ai/delphes.git -b ${DELPHES_VERSION}-puppiw Delphes-${DELPHES_VERSION} && \
+    git clone https://github.com/fermilab-hep-ai/delphes.git -b 6360ca8ed0ff018735e3bfbc815ea2c4b23adfa9 Delphes-${DELPHES_VERSION} && \
     cd Delphes-${DELPHES_VERSION} && \
+     \
     make -j$(($(nproc) - 1)) && \
     cd ../ && \
     ln -s Delphes-${DELPHES_VERSION} ./delphes
