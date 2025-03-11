@@ -22,9 +22,8 @@ SHELL [ "/bin/bash", "-c" ]
 RUN rm -rf /usr/local/share/delphes && \
     mkdir -p /usr/local/share/delphes && \
     cd /usr/local/share/delphes && \
-    git clone https://github.com/fermilab-hep-ai/delphes.git -b 6360ca8ed0ff018735e3bfbc815ea2c4b23adfa9 Delphes-${DELPHES_VERSION} && \
-    cd Delphes-${DELPHES_VERSION} && \
-     \
+    git clone https://github.com/fermilab-hep-ai/delphes.git -b ${COMMIT_HASH} Delphes-${DELPHES_VERSION} && \
+    cd Delphes-${DELPHES_VERSION} && \\
     make -j$(($(nproc) - 1)) && \
     cd ../ && \
     ln -s Delphes-${DELPHES_VERSION} ./delphes
