@@ -147,11 +147,11 @@
  0   = drll    ! min distance between leptons 
  0   = draa    ! min distance between gammas 
  0   = drbj    ! min distance between b and jet 
- 0.1 = draj    ! min distance between gamma and jet 
+ 0.0 = draj    ! min distance between gamma and jet 
  0   = drjl    ! min distance between jet and lepton 
  0   = drab    ! min distance between gamma and b 
  0   = drbl    ! min distance between b and lepton 
- 0.1 = dral    ! min distance between gamma and lepton 
+ 0.0 = dral    ! min distance between gamma and lepton 
  -1  = drjjmax ! max distance between jets
  -1  = drbbmax ! max distance between b's
  -1  = drllmax ! max distance between leptons
@@ -195,7 +195,7 @@
 #*********************************************************************
 # Control the pt's of the jets sorted by pt                          *
 #*********************************************************************
- 0   = ptj1min ! minimum pt for the leading jet in pt
+ 10.0   = ptj1min ! minimum pt for the leading jet in pt
  0   = ptj2min ! minimum pt for the second jet in pt
  0   = ptj3min ! minimum pt for the third jet in pt
  0   = ptj4min ! minimum pt for the fourth jet in pt

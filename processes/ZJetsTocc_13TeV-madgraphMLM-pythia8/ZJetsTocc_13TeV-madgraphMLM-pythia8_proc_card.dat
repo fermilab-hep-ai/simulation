@@ -1,9 +1,9 @@
 import model sm-ckm_no_b_mass
 
-define l+ = e+ mu+ ta+
-define l- = e- mu- ta-
-define q = u c d s b u~ c~ d~ s~ b~
-define ql = u d s u~ d~ s~
+#define l+ = e+ mu+ ta+
+#define l- = e- mu- ta-
+#define q = u c d s b u~ c~ d~ s~ b~
+#define ql = u d s u~ d~ s~
 
 generate p p > z, (z > c c~) @0
 add process p p > z j, (z > c c~) @1
