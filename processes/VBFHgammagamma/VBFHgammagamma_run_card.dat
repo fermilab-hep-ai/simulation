@@ -73,7 +73,7 @@
  5 = asrwgtflavor     ! highest quark flavor for a_s reweight
  True  = auto_ptj_mjj  ! Automatic setting of ptj and mjj if xqcut >0
  False        = pdfwgt           ! for ickkw=1, perform pdf reweighting 
- 20.0   = xqcut   ! minimum kt jet measure between partons
+ 10.0   = xqcut   ! minimum kt jet measure between partons
 #*********************************************************************
 #
 #*********************************************************************
@@ -206,7 +206,7 @@
 #*********************************************************************
 # Control the pt's of the jets sorted by pt                          *
 #*********************************************************************
- 10.0   = ptj1min ! minimum pt for the leading jet in pt
+ 0.0   = ptj1min ! minimum pt for the leading jet in pt
  0.0   = ptj2min ! minimum pt for the second jet in pt
  0.0   = ptj3min ! minimum pt for the third jet in pt
  0.0   = ptj4min ! minimum pt for the fourth jet in pt
