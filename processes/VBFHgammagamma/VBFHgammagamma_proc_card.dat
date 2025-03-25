@@ -1,0 +1,11 @@
+import model sm-no_b_mass
+add model hgg_plugin
+
+generate p p > h j j $$ w+ w- z a QCD=0 HIW=0, h > a a
+add process p p > h j j j $$ w+ w- z a QCD=1 HIW=0, h > a a
+add process p p > h j j j j $$ w+ w- z a QCD=2 HIW=0, h > a a
+
+
+
+output _OUTDIR_
+
