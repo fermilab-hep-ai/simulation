@@ -16,15 +16,23 @@ def submit_to_slurm(process, nevents, seed, outdir, simdir, istest):
     script_slurm = open(f'{log_path}/{label}.sbatch', 'w')
     script_slurm.write(f'#!/bin/bash\n')
     script_slurm.write(f'#SBATCH --job-name={label}\n')
-    script_slurm.write(f'#SBATCH --requeue\n')
+    #script_slurm.write(f'#SBATCH --requeue\n')
     script_slurm.write(f'#SBATCH --output={log_path}/{label}.out\n')
     script_slurm.write(f'#SBATCH --error={log_path}/{label}.err\n')
-    script_slurm.write(f'#SBATCH --time=3:00:00\n')
+    if nevents < 10001:
+        script_slurm.write(f'#SBATCH --time=2:00:00\n')
+    else:
+        script_slurm.write(f'#SBATCH --time=6:00:00\n')
     script_slurm.write(f'#SBATCH --mem=4G\n')
     script_slurm.write(f'#SBATCH --nodes=1\n')
     script_slurm.write(f'#SBATCH --ntasks-per-node=2\n')
     script_slurm.write(f'#SBATCH --cpus-per-task=1\n')
-    script_slurm.write(f'#SBATCH --partition=main\n')
+
+    script_slurm.write(f'#SBATCH --account=laionize\n')
+    if nevents < 10001:
+        script_slurm.write(f'#SBATCH --partition=devel\n')
+    else:
+        script_slurm.write(f'#SBATCH --partition=batch\n')
 
     # load environment in cluster which supports singularity
     script_slurm.write(f'module purge\n')
@@ -41,10 +49,11 @@ def submit_to_slurm(process, nevents, seed, outdir, simdir, istest):
 
     # download docker image from https://registry.hub.docker.com/r/jmduarte/mapyde
     # replace path to sif file
-    script_slurm.write(f"singularity exec --bind {simdir} /scratch/rd804/mapyde_latest.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
+    script_slurm.write(f"apptainer exec --bind {simdir} container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest} {label}\n")
     
     
-    script_slurm.write(f"mv outdir/* {outdir}/{label}\n")
+    # script_slurm.write(f"mv outdir/{label}/* {outdir}/{label}\n")
+    # script_slurm.write(f"rm -r outdir/{label}\n")
     # for a safe version of cp for eos, comment the line above and uncomment the line below
     # script_slurm.write(f"xrdcp -r outdir/* {outdir}/{label}\n")
 

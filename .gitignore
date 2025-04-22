@@ -144,5 +144,11 @@ MG5_debug
 ME5_debug
 nsqso_born.inc
 logs/*
+
 # Lxplus artifacts
-*.cc
+# *.cc
+jobs_test.csv
+num_proc_test.csv
+num_proc.csv
+num_proc.csv
+num_proc.csv
