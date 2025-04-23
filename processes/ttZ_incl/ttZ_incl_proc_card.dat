@@ -1,0 +1,7 @@
+import model sm-no_b_mass
+
+generate p p > t t~ Z
+add process p p > t t~ Z j
+add process p p > t t~ Z j j
+
+output _OUTDIR_
