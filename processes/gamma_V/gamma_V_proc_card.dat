@@ -1,0 +1,12 @@
+import model sm-no_b_mass
+
+
+define v = w+ w- z
+
+generate p p > a v
+add process p p > a v j
+add process p p > a v j j
+
+
+
+output _OUTDIR_
