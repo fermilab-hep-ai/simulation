@@ -238,6 +238,11 @@ RUN echo "convert model /usr/local/MG5_aMC_v${MG_VERSION_}/models/heft" | mg5_aM
 # Add restriction
 ADD docker/restrict_ckm_no_b_mass.dat /usr/local/MG5_aMC_v${MG_VERSION_}/models/sm/restrict_ckm_no_b_mass.dat
 
+# Add hgg_plugin models
+ADD models/sm__hgg_plugin /usr/local/MG5_aMC_v${MG_VERSION_}/models/sm__hgg_plugin
+ADD models/sm-c_mass__hgg_plugin /usr/local/MG5_aMC_v${MG_VERSION_}/models/sm-c_mass__hgg_plugin
+ADD models/sm-no_b_mass__hgg_plugin /usr/local/MG5_aMC_v${MG_VERSION_}/models/sm-no_b_mass__hgg_plugin
+
 # build cuttools
 RUN cd /usr/local/MG5_aMC_v${MG_VERSION_}/vendor/CutTools && \
     make clean && \
