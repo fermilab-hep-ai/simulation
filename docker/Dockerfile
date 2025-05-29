@@ -1,4 +1,4 @@
-ARG BUILDER_IMAGE=ghcr.io/scipp-atlas/mapyde/delphes
+ARG BUILDER_IMAGE=delphes/ubuntu:24.04
 FROM ${BUILDER_IMAGE} as builder
 ARG DELPHES_VERSION=3.5.0
 ARG LHAPDF_VERSION=6.3.0
@@ -13,14 +13,25 @@ ARG BOOST_VERSION=1.76.0
 ARG MG5aMC_PY8_INTERFACE_VERSION=1.3
 ARG PYTHON_VERSION=3.8.10
 ARG COMMIT_HASH=6360ca8ed0ff018735e3bfbc815ea2c4b23adfa9
+LABEL org.opencontainers.image.version=${DELPHES_VERSION}
+LABEL org.opencontainers.image.ref.name=latest
+
+ENTRYPOINT ["/bin/bash", "-l", "-c"]
+CMD ["/bin/bash"]
 
 USER root
 WORKDIR /usr/local
 
 SHELL [ "/bin/bash", "-c" ]
 
-RUN rm -rf /usr/local/share/delphes && \
-    mkdir -p /usr/local/share/delphes && \
+RUN apt-get -qq -y update && \
+    apt-get -y install python3 python3-pip && \
+    curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py && \
+    python2 get-pip.py && \
+    python -m pip install --no-cache-dir setuptools wheel && \
+    python -m pip install --no-cache-dir pyhepmc-ng pybind11 numpy graphviz particle pytest
+
+RUN mkdir -p /usr/local/share/delphes && \
     cd /usr/local/share/delphes && \
     git clone https://github.com/fermilab-hep-ai/delphes.git -b ${DELPHES_VERSION}-puppiw Delphes-${DELPHES_VERSION} && \
     cd Delphes-${DELPHES_VERSION} && \
