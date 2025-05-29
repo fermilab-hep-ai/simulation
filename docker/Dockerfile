@@ -24,10 +24,7 @@ WORKDIR /usr/local
 
 SHELL [ "/bin/bash", "-c" ]
 
-RUN apt-get -qq -y update && \
-    apt-get -y install python3 python3-pip && \
-    curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py && \
-    python2 get-pip.py && \
+RUN apt-get -qq -y update && \    
     python -m pip install --no-cache-dir setuptools wheel && \
     python -m pip install --no-cache-dir pyhepmc-ng pybind11 numpy graphviz particle pytest
 
