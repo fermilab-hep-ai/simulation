@@ -26,7 +26,7 @@ SHELL [ "/bin/bash", "-c" ]
 
 RUN apt-get -qq -y update && \    
     python -m pip install --no-cache-dir setuptools wheel && \
-    python -m pip install --no-cache-dir pyhepmc-ng pybind11 numpy graphviz particle pytest
+    python -m pip install --no-cache-dir pyhepmc pybind11 numpy graphviz particle pytest
 
 RUN mkdir -p /usr/local/share/delphes && \
     cd /usr/local/share/delphes && \
