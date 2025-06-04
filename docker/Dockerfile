@@ -39,6 +39,7 @@ RUN apt-get -qq -y update && \
     curl \
     bash-completion \
     python3-dev \
+    python3-pip \
     less \
     coreutils \
     libboost-all-dev \
