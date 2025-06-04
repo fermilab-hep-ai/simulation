@@ -24,22 +24,6 @@ WORKDIR /usr/local
 
 SHELL [ "/bin/bash", "-c" ]
 
-RUN apt-get -qq -y update && \    
-    python -m pip install --no-cache-dir setuptools wheel && \
-    python -m pip install --no-cache-dir pyhepmc pybind11 numpy graphviz particle pytest
-
-RUN mkdir -p /usr/local/share/delphes && \
-    cd /usr/local/share/delphes && \
-    git clone https://github.com/fermilab-hep-ai/delphes.git -b ${DELPHES_VERSION}-puppiw Delphes-${DELPHES_VERSION} && \
-    cd Delphes-${DELPHES_VERSION} && \
-    git checkout ${COMMIT_HASH} && \
-    make -j$(($(nproc) - 1)) && \
-    cd ../ && \
-    ln -s Delphes-${DELPHES_VERSION} ./delphes
-
-ENV DELPHES_PATH="/usr/local/share/delphes/delphes"
-ENV ROOT_INCLUDE_PATH=${ROOT_INCLUDE_PATH}:${DELPHES_PATH}:${DELPHES_PATH}/external
-
 RUN apt-get -qq -y update && \
     apt-get -qq -y install \
     gcc \
@@ -49,7 +33,6 @@ RUN apt-get -qq -y update && \
     vim \
     cmake \
     bc \
-    zlibc \
     zlib1g-dev \
     libbz2-dev \
     rsync \
@@ -63,6 +46,21 @@ RUN apt-get -qq -y update && \
     apt-get -y autoclean && \
     apt-get -y autoremove && \
     rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --no-cache-dir setuptools wheel --break-system-packages && \
+    python3 -m pip install --no-cache-dir pyhepmc pybind11 numpy graphviz particle pytest --break-system-packages
+
+RUN mkdir -p /usr/local/share/delphes && \
+    cd /usr/local/share/delphes && \
+    git clone https://github.com/fermilab-hep-ai/delphes.git -b ${DELPHES_VERSION}-puppiw Delphes-${DELPHES_VERSION} && \
+    cd Delphes-${DELPHES_VERSION} && \
+    git checkout ${COMMIT_HASH} && \
+    make -j$(($(nproc) - 1)) && \
+    cd ../ && \
+    ln -s Delphes-${DELPHES_VERSION} ./delphes
+
+ENV DELPHES_PATH="/usr/local/share/delphes/delphes"
+ENV ROOT_INCLUDE_PATH=${ROOT_INCLUDE_PATH}:${DELPHES_PATH}:${DELPHES_PATH}/external
 
 # Install HepMC
 RUN mkdir /code && \
