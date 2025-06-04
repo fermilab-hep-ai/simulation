@@ -11,7 +11,7 @@ ARG MG_VERSION_x=3.5.x
 ARG FASTJET_VERSION=3.3.4
 ARG BOOST_VERSION=1.76.0
 ARG MG5aMC_PY8_INTERFACE_VERSION=1.3
-ARG PYTHON_VERSION=3.8.10
+ARG PYTHON_VERSION=3.12.3
 ARG COMMIT_HASH=6360ca8ed0ff018735e3bfbc815ea2c4b23adfa9
 LABEL org.opencontainers.image.version=${DELPHES_VERSION}
 LABEL org.opencontainers.image.ref.name=latest
@@ -92,7 +92,7 @@ RUN mkdir /code && \
     ./configure --help && \
     export CXX=$(command -v g++) && \
     export PYTHON=$(command -v python3) && \
-    export PYTHON_CONFIG=/usr/bin/python-config && \
+    export PYTHON_CONFIG=/usr/bin/python3-config && \
     ./configure \
     --prefix=/usr/local \
     --enable-pyext=yes && \
