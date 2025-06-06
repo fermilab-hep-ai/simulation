@@ -6,16 +6,17 @@ proc=$1
 nevts=$2
 seed=$3
 simdir=$4
-is_test=$5
-label=$6
+outdir=$5
+is_test=$6
+label=$7
 
 if [ "$is_test" = "True" ]; then
    start_time="$(date -u +%s)"
 fi
 
 workdir=$(pwd)
-tmpdir="/p/scratch/laionize/ploner1/tmpdir/${label}"
-outdir="/p/scratch/laionize/ploner1/${label}"
+tmpdir="${outdir}/tmpdir/${label}"
+outdir="${outdir}/${label}"
 mkdir -p "$tmpdir"
 mkdir -p "$outdir"
 mkdir -p "$tmpdir/Cards"
@@ -53,7 +54,8 @@ fi
 
 cp ${simdir}/processes/${proc}/${proc}_proc_card.dat $tmpdir/proc_card.dat
 sed -i -e "s@_OUTDIR_@$tmpdir@g" $tmpdir/proc_card.dat
-/usr/local/MG5_aMC_v3_5_6/bin/mg5_aMC $tmpdir/proc_card.dat
+#/usr/local/MG5_aMC_v3_5_6/bin/mg5_aMC $tmpdir/proc_card.dat
+/usr/local/MG5_aMC_v3_5_8/bin/mg5_aMC $tmpdir/proc_card.dat 
 ls -l $tmpdir/bin/
 ls $tmpdir/bin/madevent
 if [ "$is_test" = "True" ]; then
@@ -148,7 +150,7 @@ fi
 
 # transfer generated events
 mv $tmpdir/Events/*/*.root $outdir/event.root
-# rm -r $tmpdir
+rm -r $tmpdir
 
 if [ "$is_test" = "True" ]; then
     # make validation plots
