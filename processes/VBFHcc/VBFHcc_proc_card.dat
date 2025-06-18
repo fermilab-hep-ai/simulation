@@ -1,0 +1,7 @@
+import model sm-c_mass
+
+generate p p > h j j $$ w+ w- z a j h / a QCD=0, h > c c~
+generate p p > h j j j $$ w+ w- z a j h / a QCD=1, h > c c~
+generate p p > h j j j $$ w+ w- z a j h / a QCD=2, h > c c~
+
+output _OUTDIR_

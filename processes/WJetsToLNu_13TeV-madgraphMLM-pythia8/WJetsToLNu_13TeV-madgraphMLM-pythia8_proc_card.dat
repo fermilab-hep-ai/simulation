@@ -1,15 +1,15 @@
-import model sm-ckm_no_b_mass TODO: add sm/restrict_ckm_no_b_mass.dat to Docker image.
+import model sm-ckm_no_b_mass
 
 define l+ = e+ mu+ ta+
 define l- = e- mu- ta-
 
-generate p p > l+ vl $$ t t~ h @0
-add process p p > l+ vl j $$ t t~ h @1
-add process p p > l+ vl j j $$ t t~ h @2
+define l = l+ l-
+define v = vl vl~
 
-add process p p > l- vl~ $$ t t~ h @5
-add process p p > l- vl~ j $$ t t~ h @6
-add process p p > l- vl~ j j $$ t t~ h @7
+generate p p > l v
+add process p p > l v j $$ t t~ h
+add process p p > l v j j $$ t t~ h
+
 
 
 output _OUTDIR_

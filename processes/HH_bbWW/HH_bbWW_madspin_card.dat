@@ -1,0 +1,13 @@
+set spinmode = none        # keep correlations
+set BW_cut 15  
+
+set ms_dir MADSPINGRID
+#set max_running_process 1
+#set Nevents_for_max_weight 250 # number of events for the estimate of the max. weight
+#set max_weight_ps_point 400  # number of PS to estimate the maximum for each event
+#compute_widths h --body_decays 2
+define dec = u c d s b u~ c~ d~ s~ b~ e- mu- e+ mu+ ta+ ta- ve vm vt ve~ vm~ vt~
+
+decay h > b b~
+decay h > w+ w- , (w+ > dec dec), (w- > dec dec)
+launch

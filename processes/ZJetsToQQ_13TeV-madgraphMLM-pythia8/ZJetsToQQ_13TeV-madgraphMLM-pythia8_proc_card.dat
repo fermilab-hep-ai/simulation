@@ -1,11 +1,13 @@
 import model sm-ckm_no_b_mass
 
-define l+ = e+ mu+ ta+
-define l- = e- mu- ta-
-define q = u c d s b u~ c~ d~ s~ b~
+#define l+ = e+ mu+ ta+
+#define l- = e- mu- ta-
+#define q = u c d s b u~ c~ d~ s~ b~
 
-generate p p > z, (z > q q) @0
-add process p p > z j, (z > q q) @1
-add process p p > z j j, (z > q q) @2
+define ql = u d s u~ d~ s~
+
+generate p p > z, (z > ql ql) @0
+add process p p > z j, (z > ql ql) @1
+add process p p > z j j, (z > ql ql) @2
 
 output _OUTDIR_

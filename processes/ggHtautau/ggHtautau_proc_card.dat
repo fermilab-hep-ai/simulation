@@ -1,0 +1,9 @@
+import model sm
+add model hgg_plugin
+
+generate p p > h, h > ta+ ta- @0
+add process p p > h j, h > ta+ ta- @1
+add process p p > h j j, h > ta+ ta- @2
+
+
+output _OUTDIR_

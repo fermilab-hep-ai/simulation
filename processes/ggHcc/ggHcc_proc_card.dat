@@ -1,0 +1,10 @@
+import model sm-c_mass
+add model hgg_plugin
+
+
+generate p p > h, h > c c~
+
+add process p p > h j, h > c c~ @1
+add process p p > h j j, h > c c~ @2
+
+output _OUTDIR_

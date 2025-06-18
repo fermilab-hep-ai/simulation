@@ -1,0 +1,9 @@
+import model sm
+
+
+generate p p > h j j $$ w+ w- z a QCD=0, h > b b~
+add process p p > h j j j $$ w+ w- z a QCD=1, h > b b~
+add process p p > h j j j j $$ w+ w- z a QCD=2, h > b b~
+
+output _OUTDIR_
+
