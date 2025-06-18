@@ -143,6 +143,13 @@ fi
 # transfer generated events
 mv tmpdir/Events/*/*.root outdir/event.root
 
+python3 ${simdir}/process_root_withL1T.py \
+        -i outdir/event.root \
+        -o outdir/event_skim.root     
+
+# If you would rather **replace** the original, uncomment the next line
+# mv -f outdir/event_skim.root outdir/event.root
+
 if [ "$is_test" = "True" ]; then
     # make validation plots
     python3 ${simdir}/make_plots.py -p outdir/ -v ${simdir}/validation_config.yaml
