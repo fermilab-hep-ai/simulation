@@ -67,3 +67,47 @@ If for whatever reason you would like to remove submitted jobs, use
 condor_rm $jobID
 ```
 (the `jobID` can be found out by running `condor_q` command)
+
+
+## Running DelphesPythia8 for upsilon and minbias
+
+Pull the DelphesPythia8 docker container (if needed, change the directory to the .sif file)
+```
+apptainer pull delphespythia.sif docker://rd804/delphespythia:latest
+```
+
+Using the image to generate upsilon_to_leptons or minbias: First define `root_file` where the root file should be saved, `delphes_card` where the delphes card is located. The pythia cards contain `NEVENTS` and `NSEED` which need to replaced which is done in the following script
+
+```
+process=minbias
+index=0 # change this to the index of the parallel process
+
+proc_dir=processes/${process}
+echo "Processing directory: ${proc_dir}"
+
+# path for saving the root file
+root_file=tmpdir/${process}/${process}_${index}.root
+
+# change path to where the delphes card is located
+delphes_card=/PATH/to/delphes_card
+
+# find pythia card
+pythia_card=$(find ${proc_dir} -name "*pythia*")
+
+# copy pythia card to a temp directory, to change NSEED and NEVENTS
+mkdir -p tmpdir/${process}/pythia_cards 
+cp ${pythia_card} tmpdir/${process}/pythia_cards/pythia_card_${index}.dat
+
+pythia_card=tmpdir/${process}/pythia_cards/pythia_card_${index}.dat
+
+# change seed and nevents for the temp pythia card
+sed -i "s|NSEED|${index}|g" ${pythia_card}
+sed -i "s|NEVENTS|5000|g" ${pythia_card}
+
+# run DelphesPythia8
+
+apptainer exec --env PYTHIA8DATA=/opt/Delphes-3.5.0/pythia8313/share/Pythia8/xmldoc \
+    delphespythia.sif /opt/Delphes-3.5.0/DelphesPythia8 \
+    ${delphes_card} ${pythia_card} ${root_file}
+```
+
