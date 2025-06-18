@@ -30,7 +30,9 @@ def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
     
     # This is for Delphes downloaded from dockerhub (not used unless testing)
     #script_src.write(f"apptainer exec --bind {simdir} docker://jmduarte/mapyde sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
+    #script_src.write(f"apptainer exec --bind {simdir} docker://ericmoreno0/mapyde-delphes:modified sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
     
+
     # These are for custom local delphes config (not used unless testing)
     #script_src.write(f"{simdir}/DelphesHepMC3 {simdir}/cards/delphes_card_CMS.tcl {outdir}/{label}/output.root {simdir}/input_file.hepmc\n")
     #script_src.write(f"sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
