@@ -11,7 +11,6 @@
 # Order of execution of various modules
 #######################################
 
-set MaxEvents 500
 
 set ExecutionPath {
 
@@ -126,10 +125,11 @@ set ExecutionPath {
 
   L1TECal
   L1THCal
-
+  
   L1TPhotonEnergySmearing
   L1TElectronFilter
-
+  
+  L1TTrackPileUpSubtractor
   L1TRecoPuFilter
 
   L1TTowerMerger
@@ -238,7 +238,7 @@ module PileUpMerger PileUpMerger {
   set VertexOutputArray vertices
 
   # pre-generated minbias input file
-  set PileUpFile /afs/cern.ch/user/e/emoreno/foundation/simulation/MinBias_100k.pileup
+  set PileUpFile _PileUpFile_
   
   # average expected pile up
   set MeanPileUp 200
@@ -1179,7 +1179,7 @@ module JetPileUpSubtractor JetPileUpSubtractorAK8 {
 
   set OutputArray jets
 
-  set JetPTMin 15.0
+  set JetPTMin 200.0
 }
 
 module FastJetFinder FastJetFinderPUPPI {
@@ -2973,12 +2973,30 @@ module PdgCodeFilter L1TElectronFilter {
   add PdgCode {-11}
 }
 
+#########################
+# L1 track pile-up subtractor  (NEW)
+#########################
+module TrackPileUpSubtractor L1TTrackPileUpSubtractor {
+  # charged-track input straight out of L1THCal
+  add InputArray  L1THCal/eflowTracks           eflowTracks
+  add InputArray  L1TElectronFilter/electrons   electrons
+  add InputArray  L1TMuonMomentumSmearing/muons muons
+
+  set VertexInputArray  PileUpMerger/vertices   ;# same PV collection as offline
+  # identical z-resolution formula as offline
+  set ZVertexResolution {
+       (pt < 10.) * ((-0.8*log10(pt)+1.)*(10^(0.5*abs(eta)+1.5))*1e-06) +
+       (pt >=10.) * (0.2*(10^(0.5*abs(eta)+1.5))*1e-06)
+  }
+}
+
 ########################
 # Reco PU filter
 ########################
 
 module RecoPuFilter L1TRecoPuFilter {
   set InputArray L1THCal/eflowTracks
+#  set InputArray L1TTrackPileUpSubtractor/eflowTracks
   set OutputArray eflowTracks
 }
 
@@ -3034,6 +3052,7 @@ module Merger L1TEFlowMergerCHS {
 
 module PdgCodeFilter L1TLeptonFilterNoLep {
   set InputArray L1THCal/eflowTracks
+#  set InputArray L1TTrackPileUpSubtractor/eflowTracks
   set OutputArray eflowTracksNoLeptons
   set Invert false
   add PdgCode {13}
@@ -3044,6 +3063,7 @@ module PdgCodeFilter L1TLeptonFilterNoLep {
 
 module PdgCodeFilter L1TLeptonFilterLep {
   set InputArray L1THCal/eflowTracks
+#  set InputArray L1TTrackPileUpSubtractor/eflowTracks
   set OutputArray eflowTracksLeptons
   set Invert true
   add PdgCode {11}
@@ -3160,6 +3180,7 @@ module Merger L1TScalarHT {
 module FastJetGridMedianEstimator L1TRho {
 
   set InputArray L1TEFlowMergerCHS/eflow
+  #set InputArray L1TTowerMerger/towers
   set RhoOutputArray rho
 
   # add GridRange rapmin rapmax drap dphi
@@ -3253,7 +3274,7 @@ module JetPileUpSubtractor L1TJetPileUpSubtractorAK8 {
 
   set OutputArray jets
 
-  set JetPTMin 15.0
+  set JetPTMin 200.0
 }
 
 module FastJetFinder L1TFastJetFinderPUPPI {
@@ -7182,6 +7203,6 @@ module TreeWriter TreeWriter {
 
   add Branch L1TMissingET/momentum L1TMissingET MissingET
   add Branch L1TPuppiMissingET/momentum L1TPuppiMissingET MissingET
-  add Branch L1TScalarHT/energy ScalarHT L1TScalarHT
+  add Branch L1TScalarHT/energy L1TScalarHT ScalarHT
 
 } 
