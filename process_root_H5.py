@@ -141,15 +141,7 @@ COLLECTIONS = {
     "MET":                  {"prefix": "MissingET",         "vars": ["MET", "Phi", "Eta"]},
     "PUPPIMET":             {"prefix": "PuppiMissingET",    "vars": ["MET", "Phi", "Eta"]},
     
-    # ADD GEN MET
-    # GenMissingET
-    # GenMissingET/GenMissingET.fUniqueID
-    # GenMissingET/GenMissingET.fBits
-    # GenMissingET/GenMissingET.MET
-    # GenMissingET/GenMissingET.Eta
-    # GenMissingET/GenMissingET.Phi
-    # GenMissingET_size
-
+    "GenMissingET":         { "prefix": "GenMissingET",     "vars": ["MET", "Eta", "Phi"] }
 
     # Gen info
     "GenPart":              {"prefix": "Particle",          "vars": ["PT", "Eta", "Phi", #"Mass",
