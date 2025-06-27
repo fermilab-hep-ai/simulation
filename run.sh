@@ -143,9 +143,9 @@ fi
 # transfer generated events
 mv tmpdir/Events/*/*.root outdir/event.root
 
-python3 ${simdir}/process_root_withL1T.py \
-        -i outdir/event.root \
-        -o outdir/event_skim.root     
+python3 ${simdir}/process_root_H5.py \
+        outdir/event.root \
+        outdir/event.h5 \
 
 # If you would rather **replace** the original, uncomment the next line
 # mv -f outdir/event_skim.root outdir/event.root

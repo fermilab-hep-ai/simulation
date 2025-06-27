@@ -47,7 +47,7 @@ SAFE_FLOAT16 = {
 }
 
 # Keep only the N highest‑pT PF candidates **per event** to control file size.
-MAX_PF_PER_EVENT = 200
+MAX_PF_PER_EVENT = 200 #128 for L1T 
 PF_COLLECTION_KEYS = ("PFCand", "PUPPIPart")  # collections to be trimmed
 
 def _cast_maybe_half(name: str, arr: np.ndarray) -> np.ndarray:
@@ -79,28 +79,29 @@ COLLECTIONS = {
             "PuppiW", #"IsPU"
         ],
     },
-    "EFlowTrack": {
-        "prefix": "EFlowTrack",
-        "vars": [
-            "PT", "Eta", "Phi", "Charge", "Mass",
-            "D0", "DZ", "ErrorD0", "ErrorDZ", #"IsPU"
-        ],
-    },
-    "EFlowNeutralHadron": {
-        "prefix": "EFlowNeutralHadron",
-        "vars": ["ET", "Eta", "Phi", "E", "Eem", "Ehad"],
-    },
-    "EFlowPhoton": {
-        "prefix": "EFlowPhoton",
-        "vars": ["ET", "Eta", "Phi", "E", "Eem", "Ehad"],
-    },
+    # "EFlowTrack": {
+    #     "prefix": "EFlowTrack",
+    #     "vars": [
+    #         "PT", "Eta", "Phi", "Charge", "Mass",
+    #         "D0", "DZ", "ErrorD0", "ErrorDZ", #"IsPU"
+    #     ],
+    # },
+    # "EFlowNeutralHadron": {
+    #     "prefix": "EFlowNeutralHadron",
+    #     "vars": ["ET", "Eta", "Phi", "E", "Eem", "Ehad"],
+    # },
+    # "EFlowPhoton": {
+    #     "prefix": "EFlowPhoton",
+    #     "vars": ["ET", "Eta", "Phi", "E", "Eem", "Ehad"],
+    # }, 
     "PUPPIPart": {
         "prefix": "EFlowPuppi",
         "vars": [
             "PT", "Eta", "Phi", "Charge", "Mass", "PID"
             "D0", "DZ", "ErrorD0", "ErrorDZ", "PuppiW", "IsPU"
         ],
-    },
+    }, #MAYBE REMOVE 
+
     "Electron": {
         "prefix": "Electron",
         "vars": [
