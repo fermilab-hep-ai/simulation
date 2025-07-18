@@ -95,8 +95,17 @@ if [ -e ${simdir}/processes/${proc}/${proc}_param_card.dat ]; then
 fi
 
 if [ -e ${simdir}/processes/${proc}/${proc}_madspin_card.dat ]; then
-  cp ${simdir}/processes/${proc}/${proc}_madspin_card.dat $tmpdir/Cards/madspin_card.dat
-  sed -i -e "s@_OUTDIR_@$tmpdir@g" $tmpdir/Cards/madspin_card.dat
+  echo "Copying madspin_card.dat"
+  cp ${simdir}/processes/${proc}/${proc}_madspin_card.dat $tmpdir/madspin_card.dat
+  madspin_card=$tmpdir/madspin_card.dat
+  sed -i "s|MADSPINGRID|$tmpdir/madspin_grid|g" ${madspin_card}
+  cp $tmpdir/madspin_card.dat $tmpdir/Cards/madspin_card.dat
+  #sed -i -e "s@_OUTDIR_@$tmpdir@g" $tmpdir/Cards/madspin_card.dat
+fi
+
+if [ -e ${simdir}/processes/${proc}/${proc}_pythia8_card.dat ]; then
+  echo "Copying pythia8_card.dat"
+  cp processes/${proc}/${proc}_pythia8_card.dat $tmpdir/Cards/pythia8_card.dat
 fi
 
 if [ -e ${simdir}/main43.cc ]; then
@@ -112,11 +121,20 @@ if [ -e ${simdir}/main43.cc ]; then
   /usr/local/share/delphes/Delphes-3.5.0/hepmc2pileup $tmpdir/QCD/results/SoftQCD.pileup $tmpdir/QCD/results/hepmcout_SoftQCD_MC_${seed}.data
 fi
 
+echo "launch" > $tmpdir/Cards/launchrun.dat
+echo "shower=Pythia8" >> $tmpdir/Cards/launchrun.dat
+echo "detector=Delphes" >> $tmpdir/Cards/launchrun.dat
+if [ -e ${simdir}/processes/${proc}/${proc}_madspin_card.dat ]; then
+    echo "madspin=on" >> $tmpdir/Cards/launchrun.dat
+fi
+
 echo "set nevents ${nevts}" >> $tmpdir/Cards/launchrun.dat
 if [ -e ${simdir}/processes/${proc}/${proc}_customizecards.dat ]; then
         cat ${simdir}/processes/${proc}/${proc}_customizecards.dat | sed '/^$/d;/^#.*$/d' >> $tmpdir/Cards/launchrun.dat
         echo "" >> $tmpdir/Cards/launchrun.dat
 fi
+
+
 echo "done" >> $tmpdir/Cards/launchrun.dat
 
 # change delphes source code delphes/external/PUPPI/PuppiContainer.cc and replace if(pWeight == 0) continue; with //if(pWeight == 0) continue;
@@ -147,10 +165,19 @@ if [ "$is_test" = "True" ]; then
     end_time_pythia_delphes="$(date -u +%s)"
 fi
 
+if [ -e ${simdir}/processes/${proc}/${proc}_madspin_card.dat ]; then
+    run_file=run_01_decayed_1
+else
+    run_file=run_01
+fi
+
+root_file=$(find $tmpdir/Events/${run_file}/ -name "*.root")
 
 # transfer generated events
-mv $tmpdir/Events/*/*.root $outdir/event.root
-rm -r $tmpdir
+mv $root_file $outdir/event.root
+#rm -r $tmpdir
+
+python3 ${simdir}/process_root_parquet.py $outdir/event.root $outdir/event.parquet
 
 if [ "$is_test" = "True" ]; then
     # make validation plots

@@ -51,7 +51,7 @@ def submit_to_slurm(process, nevents, seed, outdir, simdir, istest):
     # download docker image from https://registry.hub.docker.com/r/jmduarte/mapyde
     # replace path to sif file
  #   script_slurm.write(f"apptainer exec --bind {simdir} --bind {simdir}/models:/usr/local/MG5_aMC_v3_5_6/models container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label}\n")
-    script_slurm.write(f"apptainer exec --bind {simdir} --bind {simdir}/models:/usr/local/MG5_aMC_v3_5_8/models container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label}\n")
+    script_slurm.write(f"apptainer exec --bind {simdir} container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label}\n")
     
     
     # script_slurm.write(f"mv outdir/{label}/* {outdir}/{label}\n")
@@ -69,7 +69,7 @@ def submit_to_slurm(process, nevents, seed, outdir, simdir, istest):
     os.system(f'sbatch {log_path}/{label}.sbatch')
 
 def submit_one_parallel_job_to_slurm(slurmscript, process, nevents, seed, outdir, simdir, logdir, istest, label, cores=4):
-    slurmscript.write(f"srun --exact --output={logdir}/{label}.out --error={logdir}/{label}.err -n 1 -c {cores} apptainer exec --bind {simdir} --bind {simdir}/models:/usr/local/MG5_aMC_v3_5_8/models container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label} &\n")
+    slurmscript.write(f"srun --exact --output={logdir}/{label}.out --error={logdir}/{label}.err -n 1 -c {cores} apptainer exec --bind {simdir} container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label} &\n")
 
 def submit_multiple_jobs(csvfile, jobname, outdir, simdir, istest, cores_per_process=4, multithreading=False):
     """Submit multiple jobs to SLURM using a CSV file. Uses cores_per_process*n_processes cores in parallel."""
