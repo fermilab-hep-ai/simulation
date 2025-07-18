@@ -269,5 +269,37 @@ RUN chown -R root:root /usr/local/MG5_aMC_v${MG_VERSION_}/
 RUN chmod -R a+w       /usr/local/MG5_aMC_v${MG_VERSION_}/
 RUN chmod    a+x       $(find /usr/local/ -name pythia8-config)
 
+# Download and install Lua 5.4.7 from source
+RUN curl -L -R -O https://www.lua.org/ftp/lua-5.4.7.tar.gz && \
+    tar zxf lua-5.4.7.tar.gz && \
+    rm lua-5.4.7.tar.gz && \
+    cd lua-5.4.7 && \
+    make && \
+    make install INSTALL_TOP=/ && \
+    cd .. && \
+    rm -r lua-5.4.7
+# Clone and install luaposix in the correct location
+RUN git clone https://github.com/luaposix/luaposix.git && \
+    cd luaposix && \
+    lua build-aux/luke LUA=/bin/lua LUA_INCDIR=/include PREFIX=/usr INST_LIBDIR=/usr/lib64/lua/5.4 INST_LUADIR=/usr/share/lua/5.4 && \
+    lua build-aux/luke LUA=/bin/lua LUA_INCDIR=/include PREFIX=/usr INST_LIBDIR=/usr/lib64/lua/5.4 INST_LUADIR=/usr/share/lua/5.4 install && \
+    cd .. && \
+    rm -r luaposix
+# Clone, configure and install luafilesystem in the correct location
+RUN git clone https://github.com/lunarmodules/luafilesystem.git && \
+    cd luafilesystem && \
+    CONFIG_FILE="config" && \
+    NEW_PREFIX="/usr" && \
+    NEW_LUA_VERSION="5.4" && \
+    NEW_LUA_LIBDIR="${NEW_PREFIX}/lib64/lua/${NEW_LUA_VERSION}" && \
+    sed -i "s|^PREFIX=.*|PREFIX=${NEW_PREFIX}|" "$CONFIG_FILE" && \
+    sed -i "s|^LUA_VERSION *=.*|LUA_VERSION = ${NEW_LUA_VERSION}|" "$CONFIG_FILE" && \
+    sed -i "s|^LUA_LIBDIR=.*|LUA_LIBDIR= ${NEW_LUA_LIBDIR}|" "$CONFIG_FILE" && \
+    sed -i 's|^LUA_INC += -I$(PREFIX)/include|LUA_INC += -I$(PREFIX)/include -I/include|' "$CONFIG_FILE" && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -r luafilesystem
+
 ENTRYPOINT ["/bin/bash", "-l", "-c"]
 CMD ["/bin/bash"]
