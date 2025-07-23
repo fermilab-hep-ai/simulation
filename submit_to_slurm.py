@@ -3,7 +3,7 @@ import sys
 import argparse
 import csv
 
-def submit_to_slurm(process, nevents, seed, outdir, simdir, istest):
+def submit_one_job_to_slurm(process, nevents, seed, outdir, simdir, istest):
 
     # create outdir
     outdir = os.path.realpath(outdir)
@@ -20,7 +20,7 @@ def submit_to_slurm(process, nevents, seed, outdir, simdir, istest):
     #script_slurm.write(f'#SBATCH --requeue\n')
     script_slurm.write(f'#SBATCH --output={log_path}/{label}.out\n')
     script_slurm.write(f'#SBATCH --error={log_path}/{label}.err\n')
-    if nevents < 10001:
+    if nevents < 10000:
         script_slurm.write(f'#SBATCH --time=2:00:00\n')
     else:
         script_slurm.write(f'#SBATCH --time=6:00:00\n')
@@ -30,7 +30,7 @@ def submit_to_slurm(process, nevents, seed, outdir, simdir, istest):
     script_slurm.write(f'#SBATCH --cpus-per-task=48\n')
 
     script_slurm.write(f'#SBATCH --account=laionize\n')
-    if nevents < 10001:
+    if nevents < 10000:
         script_slurm.write(f'#SBATCH --partition=devel\n')
     else:
         script_slurm.write(f'#SBATCH --partition=batch\n')
@@ -68,20 +68,14 @@ def submit_to_slurm(process, nevents, seed, outdir, simdir, istest):
     # slurm file submission
     os.system(f'sbatch {log_path}/{label}.sbatch')
 
-def submit_one_parallel_job_to_slurm(slurmscript, process, nevents, seed, outdir, simdir, logdir, istest, label, cores=4):
+def one_parallel_slurm_job_command(slurmscript, process, nevents, seed, outdir, simdir, logdir, istest, label, cores=4):
     slurmscript.write(f"srun --exact --output={logdir}/{label}.out --error={logdir}/{label}.err -n 1 -c {cores} apptainer exec --bind {simdir} container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label} &\n")
-
-def submit_multiple_jobs(csvfile, jobname, outdir, simdir, istest, cores_per_process=4, multithreading=False):
-    """Submit multiple jobs to SLURM using a CSV file. Uses cores_per_process*n_processes cores in parallel."""
-
-    # get absolute paths
-    outdir = os.path.realpath(outdir)
-    simdir = os.path.realpath(simdir)
-
-    # read list of processes, nevents and seeds from csv file
+    
+def read_csv_file(csvfile):
+    """Read a CSV file and return a list of processes, nevents, and seeds."""
     with open(csvfile, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
-        reader.__next__()
+        reader.__next__()  # skip header
         process_list = []
         nevents_list = []
         seed_list = []
@@ -89,9 +83,16 @@ def submit_multiple_jobs(csvfile, jobname, outdir, simdir, istest, cores_per_pro
             process_list.append(process.strip())
             nevents_list.append(int(nevents.strip()))
             seed_list.append(int(seed.strip()))
+    return process_list, nevents_list, seed_list
 
+def submit_multiple_jobs(process_list, nevents_list, seed_list, jobname, outdir, simdir, istest, cores_per_process=8, multithreading=True):
+    """Submit multiple jobs to SLURM using a CSV file. Uses cores_per_process*n_processes cores in parallel."""
+
+    # get absolute paths
+    outdir = os.path.realpath(outdir)
+    simdir = os.path.realpath(simdir)
+    
     n_processes = len(process_list)
-    print(f"Submitting {n_processes} processes to SLURM with {cores_per_process} cores per process.")
 
     if n_processes*cores_per_process > 96:
         print(f"Warning: {n_processes*cores_per_process} cores is more than 96, which is too much for a single node. Please split the jobs into smaller batches.")
@@ -114,8 +115,8 @@ def submit_multiple_jobs(csvfile, jobname, outdir, simdir, istest, cores_per_pro
     script_slurm = open(script_file, 'w')
     script_slurm.write(f'#!/bin/bash\n')
     script_slurm.write(f'#SBATCH --job-name={jobname}\n')
-    script_slurm.write(f'#SBATCH --output={simdir}/logs/batchlogs/{jobname}.out\n')
-    script_slurm.write(f'#SBATCH --error={simdir}/logs/batchlogs/{jobname}.err\n')
+    # script_slurm.write(f'#SBATCH --output={simdir}/logs/batchlogs/{jobname}.out\n')
+    # script_slurm.write(f'#SBATCH --error={simdir}/logs/batchlogs/{jobname}.err\n')
     if max(nevents_list) < 7501:
         script_slurm.write(f'#SBATCH --time=2:00:00\n')
     else:
@@ -148,7 +149,7 @@ def submit_multiple_jobs(csvfile, jobname, outdir, simdir, istest, cores_per_pro
 
     # submit each process in parallel
     for process, nevents, seed, label, log_path in zip(process_list, nevents_list, seed_list, labels, log_paths):
-        submit_one_parallel_job_to_slurm(script_slurm, process, nevents, seed, outdir, simdir, log_path, istest, label, cores_per_process)
+        one_parallel_slurm_job_command(script_slurm, process, nevents, seed, outdir, simdir, log_path, istest, label, cores_per_process)
     
 
     # wait for all processes to finish
@@ -163,8 +164,42 @@ def submit_multiple_jobs(csvfile, jobname, outdir, simdir, istest, cores_per_pro
 
     # slurm file submission
     os.system(f'sbatch {script_file}')
-
-
+    
+def batch_submission_from_csv(args):
+    """Read a CSV file and call submit_multiple_jobs appropriately."""
+    process_list, nevents_list, seed_list = read_csv_file(args.csv)
+    high_parallel = args.high_parallel
+    n_processes = len(process_list)
+    if n_processes <= 12:
+        print(f"Submitting {n_processes} processes to SLURM")
+        submit_multiple_jobs(process_list, nevents_list, seed_list, args.label, args.outdir, args.simdir, args.test, cores_per_process=8, multithreading=True)
+    elif n_processes <= 24 and high_parallel:
+        print(f"Submitting {n_processes} processes to SLURM")
+        submit_multiple_jobs(process_list, nevents_list, seed_list, args.label, args.outdir, args.simdir, args.test, cores_per_process=4, multithreading=1)
+    elif high_parallel:
+        print(f"Dividing {n_processes} processes into smaller batches of max 24 processes each")
+        n_batches = (n_processes + 23) // 24
+        for i in range(n_batches):
+            start = i * 24
+            end = min((i + 1) * 24, n_processes)
+            batch_processes = process_list[start:end]
+            batch_nevents = nevents_list[start:end]
+            batch_seeds = seed_list[start:end]
+            print(f"Submitting batch {i+1}/{n_batches} to SLURM with {len(batch_processes)} processes and 4 cores per process.")
+            submit_multiple_jobs(batch_processes, batch_nevents, batch_seeds, f"{args.label}_batch_{i+1}", args.outdir, args.simdir, args.test, cores_per_process=4, multithreading=True)
+        print(f"Submitted {n_processes} processes to SLURM using {args.csv}.")
+    else:
+        print(f"Dividing {n_processes} processes into smaller batches of max 12 processes each")
+        n_batches = (n_processes + 11) // 12
+        for i in range(n_batches):
+            start = i * 12
+            end = min((i + 1) * 12, n_processes)
+            batch_processes = process_list[start:end]
+            batch_nevents = nevents_list[start:end]
+            batch_seeds = seed_list[start:end]
+            print(f"Submitting batch {i+1}/{n_batches} to SLURM with {len(batch_processes)} processes and 8 cores per process.")
+            submit_multiple_jobs(batch_processes, batch_nevents, batch_seeds, f"{args.label}_batch_{i+1}", args.outdir, args.simdir, args.test, cores_per_process=8, multithreading=True)
+        print(f"Submitted {n_processes} processes to SLURM using {args.csv}.")
 
 
 if __name__ == '__main__':
@@ -175,19 +210,19 @@ if __name__ == '__main__':
         help='output directory for logs')
 
     parser.add_argument('-n', '--nevents', type=int, default=1000,
-        help='number of events to be processed')
+        help='number of events to be processed, if ordering a single job')
+    
+    parser.add_argument('-s', '--seed', default=0,
+        help='seed for simulation, if ordering a single job')
 
     parser.add_argument('-p', '--process', type=str, default='WJetsToLNu_13TeV-madgraphMLM-pythia8',
-        help='name of the process to generate')
+        help='name of the process to generate, if ordering a single job')
 
-    parser.add_argument('--seed', default=0,
-        help='seed for simulation')
-
+    parser.add_argument('-csv', '--csv', default=None,
+        help='path to the .csv containg job submissions to be made, if ordering multiple jobs')
+    
     parser.add_argument('--simdir', default=os.getcwd(),
         help='path to the shared simulation folder')
-
-    parser.add_argument('--csv', default=None,
-        help='path to the jobs.csv to use')
 
     parser.add_argument('-t','--test', action='store_true',
         help='if testing mode (timing and plots returned)')
@@ -195,6 +230,8 @@ if __name__ == '__main__':
     parser.add_argument('-l','--label', type=str, default='test',
         help='label for the job, used for batch submissions with csv file')
     
+    parser.add_argument('-hp', '--high_parallel', action='store_true',
+        help='enable high parallel mode for multiple jobs, which allows for 24 processes per batch instead of 12.')
 
     args = parser.parse_args()
 
@@ -202,9 +239,11 @@ if __name__ == '__main__':
     os.system(f'chmod a+x {os.getcwd()}')
 
     if args.csv:
-            #for process, nevents, seed in reader:
-            #   submit_to_slurm(process, int(nevents), int(seed), args.outdir, args.simdir, args.test)
-        submit_multiple_jobs(args.csv, args.label, args.outdir, args.simdir, args.test, cores_per_process=4, multithreading=1)
+        batch_submission_from_csv(args)                
 
     else:
-        submit_to_slurm(args.process, args.nevents, args.seed, args.outdir, args.simdir, args.test)
+        submit_one_job_to_slurm(args.process, args.nevents, args.seed, args.outdir, args.simdir, args.test)
+        
+    
+    
+    
