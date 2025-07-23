@@ -175,21 +175,23 @@ root_file=$(find $tmpdir/Events/${run_file}/ -name "*.root")
 
 # transfer generated events
 mv $root_file $outdir/event.root
-#rm -r $tmpdir
+rm -r $tmpdir
 
+# convert root output file to parquet
 python3 ${simdir}/process_root_parquet.py $outdir/event.root $outdir/event.parquet
 
 if [ "$is_test" = "True" ]; then
     # make validation plots
-    python3 ${simdir}/make_plots.py -p $outdir/ -v ${simdir}/validation_config.yaml
+    # python3 ${simdir}/make_plots.py -p $outdir/ -v ${simdir}/validation_config.yaml
+    python3 ${simdir}/make_validation_plots_parquet.py $outdir
 
     # timing monitor dump
     end_time="$(date -u +%s)"
     elapsed_madgraph="$(($end_time_madgraph-$start_time_madgraph))"
     elapsed_pythia_delphes="$(($end_time_pythia_delphes-$start_time_pythia_delphes))"
     elapsed_total="$(($end_time-$start_time))"
-    echo "Time madgraph: $elapsed_madgraph seconds" >> $outdir/timing.txt
-    echo "Time pythia+delphes: $elapsed_pythia_delphes seconds" >> $outdir/timing.txt
+    echo "Time mg5_aMC: $elapsed_madgraph seconds" >> $outdir/timing.txt
+    echo "Time madevent: $elapsed_pythia_delphes seconds" >> $outdir/timing.txt
     echo "Time end-to-end execution: $elapsed_total" >> $outdir/timing.txt
 fi
 

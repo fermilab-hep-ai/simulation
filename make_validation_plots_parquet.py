@@ -4,7 +4,7 @@ Delphes validation adapted from Eric Moreno's make_validation_plots.py to work w
 
 Usage
 -----
-    python make_validation_plots.py  /path/to/PROC-NEV-SEED/parent  [--outdir OUT]
+    python make_validation_plots.py  /path/to/PROC-NEV-SEED/parent OR /path/to/PROC-NEV-SEED  [--outdir OUT]
 
 The top directory must contain folders named
         PROCESS-NUMEVENTS-RANDSEED
@@ -317,7 +317,8 @@ def make_plots(table, out_dir):
     # ------------------------------------------------------------------- #
     fig, ax = plt.subplots(figsize=(10, 6))
     vtx_mult_off = get_vertex_multiplicity(table, "FullReco_PrimaryVertex_T")
-    vtx_mult_l1t = get_vertex_multiplicity(table, "L1T_PrimaryVertex_T")
+    #vtx_mult_l1t = get_vertex_multiplicity(table, "L1T_PrimaryVertex_T")
+    vtx_mult_l1t = None
     
     if vtx_mult_off is not None or vtx_mult_l1t is not None:
         vmax = np.max([np.max(b) for b in (vtx_mult_off, vtx_mult_l1t) if b is not None] + [5])
@@ -566,10 +567,16 @@ def collect_event_parquets(topdir):
         if proc and proc not in evt:   evt[proc] = Path(dirpath)/"event.parquet"
     return evt
 
+def collect_single_parquet(subdir):
+    evt = {}; pat = re.compile(r"(?P<proc>.+)-\d+-\d+$")
+    m = pat.match(Path(subdir).name); proc = m.group("proc") if m else None
+    if proc: evt[proc] = Path(subdir)/"event.parquet"
+    return evt
+
 # --------------------------------------------------------------------------- #
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("repo", help="Top folder with PROCESS-NEV-SEED sub-dirs")
+    ap.add_argument("repo", help="Top folder with PROCESS-NEV-SEED sub-dirs containing event.parquet files OR just one PROCESS-NEV-SEED dir with event.parquet file")
     ap.add_argument("--outdir", default=None,
                     help="Output directory (default: <repo>/parquet_validation_plots)")
     args = ap.parse_args()
@@ -579,15 +586,26 @@ def main():
         sys.exit(f"Repository '{repo}' not found.")
     outdir = Path(args.outdir) if args.outdir else repo/"parquet_validation_plots"
     ensure_dir(outdir)
+    single_process = False
 
-    todo = collect_event_parquets(repo)
+    if (repo/"event.parquet").is_file():
+        print(f"Found event.parquet in {repo}, using it as single file input.")
+        single_process = True
+        todo = collect_single_parquet(repo)
+    else:
+        print(f"Collecting event.parquet files from {repo}...")
+        todo = collect_event_parquets(repo)
+
     if not todo:
         sys.exit("No event.parquet files found – check directory layout.")
 
     for proc, parquet in sorted(todo.items()):
         print(f"Processing {proc:>20}  ({parquet})")
         table = pq.read_table(parquet)
-        make_plots(table, outdir/f"{proc}_plots")
+        if single_process:
+            make_plots(table, outdir)
+        else:
+            make_plots(table, outdir/f"{proc}_plots")
 
 if __name__ == "__main__":
     main()

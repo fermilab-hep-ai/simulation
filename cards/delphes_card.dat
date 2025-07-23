@@ -11,6 +11,7 @@
 # Order of execution of various modules
 #######################################
 
+
 set ExecutionPath {
 
   PileUpMerger
@@ -124,10 +125,11 @@ set ExecutionPath {
 
   L1TECal
   L1THCal
-
+  
   L1TPhotonEnergySmearing
   L1TElectronFilter
-
+  
+  L1TTrackPileUpSubtractor
   L1TRecoPuFilter
 
   L1TTowerMerger
@@ -993,6 +995,7 @@ module Merger PuppiMissingET {
   add InputArray RunPUPPI/PuppiParticles
   #add InputArray EFlowMerger/eflow
   set MomentumOutputArray momentum
+  set UsePUPPI 1
 }
 
 ###################
@@ -1176,7 +1179,7 @@ module JetPileUpSubtractor JetPileUpSubtractorAK8 {
 
   set OutputArray jets
 
-  set JetPTMin 15.0
+  set JetPTMin 200.0
 }
 
 module FastJetFinder FastJetFinderPUPPI {
@@ -1188,6 +1191,7 @@ module FastJetFinder FastJetFinderPUPPI {
   # algorithm: 1 CDFJetClu, 2 MidPoint, 3 SIScone, 4 kt, 5 Cambridge/Aachen, 6 antikt
   set JetAlgorithm 6
   set ParameterR 0.4
+  set UsePUPPI 1
 
   set JetPTMin 15.0
 }
@@ -1219,6 +1223,7 @@ module FastJetFinder FastJetFinderPUPPIAK8 {
   set BetaSoftDrop 0.0
   set SymmetryCutSoftDrop 0.1
   set R0SoftDrop 0.8
+  set UsePUPPI 1
 
   set JetPTMin 200.0
 }
@@ -2968,12 +2973,30 @@ module PdgCodeFilter L1TElectronFilter {
   add PdgCode {-11}
 }
 
+#########################
+# L1 track pile-up subtractor  (NEW)
+#########################
+module TrackPileUpSubtractor L1TTrackPileUpSubtractor {
+  # charged-track input straight out of L1THCal
+  add InputArray  L1THCal/eflowTracks           eflowTracks
+  add InputArray  L1TElectronFilter/electrons   electrons
+  add InputArray  L1TMuonMomentumSmearing/muons muons
+
+  set VertexInputArray  PileUpMerger/vertices   ;# same PV collection as offline
+  # identical z-resolution formula as offline
+  set ZVertexResolution {
+       (pt < 10.) * ((-0.8*log10(pt)+1.)*(10^(0.5*abs(eta)+1.5))*1e-06) +
+       (pt >=10.) * (0.2*(10^(0.5*abs(eta)+1.5))*1e-06)
+  }
+}
+
 ########################
 # Reco PU filter
 ########################
 
 module RecoPuFilter L1TRecoPuFilter {
   set InputArray L1THCal/eflowTracks
+#  set InputArray L1TTrackPileUpSubtractor/eflowTracks
   set OutputArray eflowTracks
 }
 
@@ -3029,6 +3052,7 @@ module Merger L1TEFlowMergerCHS {
 
 module PdgCodeFilter L1TLeptonFilterNoLep {
   set InputArray L1THCal/eflowTracks
+#  set InputArray L1TTrackPileUpSubtractor/eflowTracks
   set OutputArray eflowTracksNoLeptons
   set Invert false
   add PdgCode {13}
@@ -3039,6 +3063,7 @@ module PdgCodeFilter L1TLeptonFilterNoLep {
 
 module PdgCodeFilter L1TLeptonFilterLep {
   set InputArray L1THCal/eflowTracks
+#  set InputArray L1TTrackPileUpSubtractor/eflowTracks
   set OutputArray eflowTracksLeptons
   set Invert true
   add PdgCode {11}
@@ -3134,6 +3159,7 @@ module Merger L1TPuppiMissingET {
   add InputArray L1TRunPUPPI/PuppiParticles
   #add InputArray EFlowMerger/eflow
   set MomentumOutputArray momentum
+  set UsePUPPI 1
 }
 
 ##################
@@ -3154,6 +3180,7 @@ module Merger L1TScalarHT {
 module FastJetGridMedianEstimator L1TRho {
 
   set InputArray L1TEFlowMergerCHS/eflow
+  #set InputArray L1TTowerMerger/towers
   set RhoOutputArray rho
 
   # add GridRange rapmin rapmax drap dphi
@@ -3247,7 +3274,7 @@ module JetPileUpSubtractor L1TJetPileUpSubtractorAK8 {
 
   set OutputArray jets
 
-  set JetPTMin 15.0
+  set JetPTMin 200.0
 }
 
 module FastJetFinder L1TFastJetFinderPUPPI {
@@ -3259,6 +3286,7 @@ module FastJetFinder L1TFastJetFinderPUPPI {
   # algorithm: 1 CDFJetClu, 2 MidPoint, 3 SIScone, 4 kt, 5 Cambridge/Aachen, 6 antikt
   set JetAlgorithm 6
   set ParameterR 0.4
+  set UsePUPPI 1
 
   set JetPTMin 15.0
 }
@@ -3290,6 +3318,7 @@ module FastJetFinder L1TFastJetFinderPUPPIAK8 {
   set BetaSoftDrop 0.0
   set SymmetryCutSoftDrop 0.1
   set R0SoftDrop 0.8
+  set UsePUPPI 1
 
   set JetPTMin 200.0
 }
@@ -7113,7 +7142,7 @@ module TreeWriter TreeWriter {
   add Branch ECal/eflowPhotons EFlowPhoton Tower
   add Branch HCal/eflowNeutralHadrons EFlowNeutralHadron Tower
 
-  #add Branch RunPUPPIMerger/PuppiParticles EFlow ParticleFlowCandidate
+  add Branch RunPUPPIMerger/PuppiParticles EFlowPuppi ParticleFlowCandidate
 
   add Branch EFlowMerger/eflow EFlow ParticleFlowCandidate
   add Branch EFlowMergerCHS/eflow EFlowCHS ParticleFlowCandidate
@@ -7142,4 +7171,38 @@ module TreeWriter TreeWriter {
   add Branch GenPileUpMissingET/momentum GenPileUpMissingET MissingET
   add Branch ScalarHT/energy ScalarHT ScalarHT
 
-}
+  # L1T
+
+  add Branch L1THCal/eflowTracks L1TEFlowTrack Track
+  add Branch L1TECal/eflowPhotons L1TEFlowPhoton Tower
+  add Branch L1THCal/eflowNeutralHadrons L1TEFlowNeutralHadron Tower
+
+  add Branch L1TRunPUPPIMerger/PuppiParticles L1TEFlowPuppi ParticleFlowCandidate
+
+  add Branch L1TEFlowMerger/eflow L1TEFlow ParticleFlowCandidate
+  add Branch L1TEFlowMergerCHS/eflow L1TEFlowCHS ParticleFlowCandidate
+
+  add Branch L1TPhotonLooseID/photons L1TPhotonLoose Photon
+  add Branch L1TPhotonTightID/photons L1TPhotonTight Photon
+
+  add Branch L1TElectronEfficiency/electrons L1TElectron Electron
+  add Branch L1TMuonLooseIdEfficiency/muons L1TMuonLoose Muon
+  add Branch L1TMuonTightIdEfficiency/muons L1TMuonTight Muon
+
+  add Branch L1TPhotonEfficiencyCHS/photons L1TPhotonCHS Photon
+  add Branch L1TElectronEfficiencyCHS/electrons L1TElectronCHS Electron
+  add Branch L1TMuonLooseIdEfficiencyCHS/muons L1TMuonLooseCHS Muon
+  add Branch L1TMuonTightIdEfficiencyCHS/muons L1TMuonTightCHS Muon
+
+  add Branch L1TJetEnergyScale/jets L1TJet Jet
+  add Branch L1TJetEnergyScalePUPPI/jets L1TJetPUPPI Jet
+  add Branch L1TJetEnergyScaleAK8/jets L1TJetAK8 Jet
+  add Branch L1TJetEnergyScalePUPPIAK8/jets L1TJetPUPPIAK8 Jet
+
+  add Branch L1TRho/rho L1TRho Rho
+
+  add Branch L1TMissingET/momentum L1TMissingET MissingET
+  add Branch L1TPuppiMissingET/momentum L1TPuppiMissingET MissingET
+  add Branch L1TScalarHT/energy L1TScalarHT ScalarHT
+
+} 
