@@ -5,8 +5,8 @@ ARG LHAPDF_VERSION=6.3.0
 ARG PYTHIA_VERSION=8310
 ARG FASTJET_VERSION=3.3.4
 ARG HEPMC_VERSION=2.06.11
-ARG MG_VERSION=3.5.6
-ARG MG_VERSION_=3_5_6
+ARG MG_VERSION=3.5.8
+ARG MG_VERSION_=3_5_8
 ARG MG_VERSION_x=3.5.x
 ARG FASTJET_VERSION=3.3.4
 ARG BOOST_VERSION=1.76.0
@@ -161,6 +161,11 @@ RUN cd /usr/local && \
     tar -xzf MG5_aMC_v${MG_VERSION}.tar.gz && \
     chmod -R a+w /usr/local/MG5_aMC_v${MG_VERSION_}/ && \
     rm MG5_aMC_v${MG_VERSION}.tar.gz && \
+    echo "Patching madevent_interface.py" && \
+    cd /usr/local/MG5_aMC_v${MG_VERSION_}/ && \
+    wget --no-check-certificate https://github.com/mg5amcnlo/mg5amcnlo/commit/1cec098c51d8f3e5823c33d3dd06048825934d20.patch && \
+    git apply 1cec098c51d8f3e5823c33d3dd06048825934d20.patch && \
+    rm 1cec098c51d8f3e5823c33d3dd06048825934d20.patch && \
     echo "Installing MG5aMC_PY8_interface" && \
     mkdir /code && \
     cd /code && \
@@ -205,7 +210,7 @@ RUN cp /root/.profile ${HOME}/.profile && \
     echo 'export PATH=/usr/local/MG5_aMC_v${MG_VERSION_}/bin:$PATH' >> ${HOME}/.bashrc && \
     echo 'alias ls="ls -ltrh --color"' >> ${HOME}/.bashrc && \
     python3 -m pip install --upgrade --no-cache-dir pip setuptools wheel && \
-    python3 -m pip install --no-cache-dir six numpy matplotlib uproot pyyaml
+    python3 -m pip install --no-cache-dir six numpy matplotlib uproot pyyaml pyarrow
 
 ENV PYTHONPATH=/usr/local/lib:$PYTHONPATH
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
