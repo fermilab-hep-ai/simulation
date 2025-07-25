@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-process_root_parquet.py
+delphes_to_h5.py
 
 Convert Delphes .root output containing both full‑reconstruction ("FullReco")
-and Level‑1 trigger ("L1T") branches into a single Parquet file.
+and Level‑1 trigger ("L1T") branches into a single HDF5 file.
 
 The script extracts
   • PF candidates with PUPPI
@@ -14,13 +14,15 @@ The script extracts
   • GenParticles and GenJets
   • Primary & Secondary vertices
 
-Every branch is written twice: once with prefix FullReco and once with prefix L1T.
+Every branch is written twice: once under /FullReco and once under /L1T.
+The output now also carries an explicit jet → PF‑candidate map (`Constituents_data` / `Constituents_offsets`) that makes it trivial to recover the list of PF indices for every jet.
 
 Usage
 ------
-    python3 process_root_parquet.py input.root output.parquet   # default chunk=10 000 events
-    python3 process_root_parquet.py -h                          # full CLI help
+    python3 process_root_h5.py input.root output.h5        # default chunk=10 000 events
+    python3 process_root_h5.py -h                          # full CLI help
 """
+
 
 import argparse
 import logging
@@ -28,8 +30,7 @@ from pathlib import Path
 import numpy as np
 import awkward as ak
 import uproot
-import pyarrow as pa
-import pyarrow.parquet as pq
+import h5py
 
 # ---------------------------------------------------------------------
 # Space–saving helper: cast high‑dynamic‑range float columns to float16
@@ -47,8 +48,7 @@ SAFE_FLOAT16 = {
 
 # Keep only the N highest‑pT PF candidates **per event** to control file size.
 MAX_PF_PER_EVENT = 200 #128 for L1T 
-PF_COLLECTION_KEYS = ()
-# PF_COLLECTION_KEYS = ("PFCand", "PUPPIPart")  # collections to be trimmed
+PF_COLLECTION_KEYS = ("PFCand", "PUPPIPart")  # collections to be trimmed
 
 def _cast_maybe_half(name: str, arr: np.ndarray) -> np.ndarray:
     """
@@ -75,7 +75,7 @@ COLLECTIONS = {
         "prefix": "EFlowCHS",
         "vars": [
             "PT", "Eta", "Phi", "PID", "Charge", "Mass",
-            "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID",
+            "D0", "DZ", "ErrorD0", "ErrorDZ",
             "PuppiW", #"IsPU"
         ],
     },
@@ -98,7 +98,7 @@ COLLECTIONS = {
         "prefix": "EFlowPuppi",
         "vars": [
             "PT", "Eta", "Phi", "Charge", "Mass", "PID",
-            "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID", "PuppiW", #"IsPU"
+            "D0", "DZ", "ErrorD0", "ErrorDZ", "PuppiW", "IsPU"
         ],
     }, #MAYBE REMOVE 
 
@@ -135,9 +135,9 @@ COLLECTIONS = {
     },
     # Jets
     "JetAK4":               {"prefix": "Jet",               "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
-    "JetAK8":               {"prefix": "JetAK8",            "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
-    "JetPuppiAK4":          {"prefix": "JetPUPPI",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
-    "JetPuppiAK8":          {"prefix": "JetPUPPIAK8",       "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
+    "JetAK8":               {"prefix": "JetAK8",            "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge"]},# "Constituents"]},
+    "JetPuppiAK4":          {"prefix": "JetPUPPI",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge"]},# "Constituents"]},
+    "JetPuppiAK8":          {"prefix": "JetPUPPIAK8",       "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge"]},# "Constituents"]},
     # MET
     "MET":                  {"prefix": "MissingET",         "vars": ["MET", "Phi", "Eta"]},
     "PUPPIMET":             {"prefix": "PuppiMissingET",    "vars": ["MET", "Phi", "Eta"]},
@@ -175,6 +175,75 @@ L1T_RENAME = {
 #                               CORE  UTILITIES                                #
 ################################################################################
 
+def make_dataset(group: h5py.Group, name: str, jagged: ak.Array):
+    """
+    Store a jagged Awkward array in two flat datasets.
+
+    Generic case (shape = [event][object][…]):
+        <name>_data     – flattened values
+        <name>_offsets  – event‑level offsets (len = nEvents+1)
+
+    Special case ``name == "Constituents"``:
+        • Decode ROOT ``TRefArray`` words into zero‑based PF‑candidate
+          indices:  idx = (ref & 0x3FFFFF) – 1
+        • Write
+            Constituents_data     – flattened PF indices
+            Constituents_offsets  – offsets **per jet** (len = nJets+1)
+
+       Rebuild later with::
+
+           start, stop = offsets[j], offsets[j+1]
+           pf_idx      = data[start:stop]   # numpy slice of PF indices
+    """
+    try:
+        # ────────────────────────────────────────────────────────────────
+        # Jet‑constituent map  (TRefArray → PF index)
+        # ────────────────────────────────────────────────────────────────
+        if name == "Constituents":
+            # jagged layout: [event][jet] dict{fName,fSize,refs}
+            refs = jagged.refs                                # uint32 list
+            idx  = ak.values_astype((refs & 0x3FFFFF), np.int64) - 1  # 0‑based
+            flat      = ak.to_numpy(ak.flatten(idx, axis=None))                # all indices
+
+            jet_sizes = ak.to_numpy(ak.flatten(ak.num(idx, axis=2)))# cands per‑jet
+            offsets   = np.concatenate(([0], np.cumsum(jet_sizes))) # jet offsets
+
+            group.create_dataset(f"{name}_data",
+                                 data=flat,
+                                 compression="gzip",
+                                 compression_opts=4,
+                                 shuffle=True)
+            group.create_dataset(f"{name}_offsets",
+                                 data=offsets,
+                                 compression="gzip",
+                                 compression_opts=4,
+                                 shuffle=True)
+            logging.debug("  ⤷ wrote %s (constituent map, %d indices)",
+                          name, len(flat))
+            return  # special case handled – exit here
+        # ────────────────────────────────────────────────────────────────
+        # Generic jagged branch
+        # ────────────────────────────────────────────────────────────────
+        flat = _cast_maybe_half(name, ak.to_numpy(ak.flatten(jagged, axis=None)))
+        counts = ak.to_numpy(ak.num(jagged, axis=1))          # objects/event
+        offsets = np.concatenate(([0], np.cumsum(counts)))    # event offsets
+
+        group.create_dataset(f"{name}_data",
+                             data=flat,
+                             compression="gzip",
+                             compression_opts=4,
+                             shuffle=True)
+        group.create_dataset(f"{name}_offsets",
+                             data=offsets,
+                             compression="gzip",
+                             compression_opts=4,
+                             shuffle=True)
+        logging.debug("  ⤷ wrote %s (%d entries)", name, len(flat))
+
+    except Exception as e:
+        logging.warning("Skipping %s - cannot process: %s", name, str(e))
+        return
+
 
 def branch(tree, br_name):
     """Return awkward array if branch exists, else None."""
@@ -188,13 +257,12 @@ def branch(tree, br_name):
         return None
 
 
-def write_collection(tree, table_data, l1t=False):
+def write_collection(tree, h5group, prefix="", l1t=False):
     """
-    Extract every collection listed in CONFIGURATION and add the branches as values of the table_data dictionary.
-    If `l1t` is True, use the L1T view of the collection, otherwise use the FullReco view.
+    Extract every collection listed in CONFIGURATION and write into an HDF5
+    group.  `prefix` is either "" for FullReco or "L1T" for trigger objects.
     """
     tag = "L1T" if l1t else "FullReco"
-    prefix = "L1T" if l1t else ""
     logging.info("Processing %s collections …", tag)
 
     for coll_key, cfg in COLLECTIONS.items():
@@ -213,33 +281,23 @@ def write_collection(tree, table_data, l1t=False):
             pt_array = branch(tree, f"{full_prefix}.PT")
             if pt_array is not None:
                 # argsort returns ascending → take tail and build boolean mask
-                #rank = ak.argsort(pt_array, axis=1, ascending=False)
-                sorted_indices = ak.argsort(pt_array, axis=1, ascending=False)
-                #keep_mask = rank < MAX_PF_PER_EVENT
-                ranks = ak.argsort(sorted_indices, axis=1)
-                keep_mask = ranks < MAX_PF_PER_EVENT
+                rank = ak.argsort(pt_array, axis=1, ascending=False)
+                keep_mask = rank < MAX_PF_PER_EVENT
 
+        subgroup = h5group.require_group(coll_key)
         logging.debug(" • %s", coll_key)
 
         for var in vars_:
             br = f"{full_prefix}.{var}"
             arr = branch(tree, br)
-            if var == 'Constituents' and arr is not None:
-                # This array is stored by root as a dictionary with .refs containing the constituent indices
-                # The rest of the dictionary is useless
-                arr=arr.refs 
             if arr is None:
                 continue
 
             # Apply thinning mask consistently to every column
             if keep_mask is not None:
                 arr = arr[keep_mask]
+            make_dataset(subgroup, var, arr)
 
-            column_name = f"{tag}_{coll_key}_{var}"
-            table_data[column_name] = arr
-            logging.debug("  • %s", column_name)
-            
-            
     logging.info("Done with %s", tag)
 
 ################################################################################
@@ -255,41 +313,30 @@ def main(args):
 
     # Open input and output files
     tree = uproot.open(root_path)["Delphes"]
-    table_data= {}
-    
-    # ── Full‑reco view ═══════════════════════════════════════════════════════
-    write_collection(tree, table_data, l1t=False)
+    with h5py.File(out_path, "w") as h5:
 
-    # ── Level‑1 Trigger view ═════════════════════════════════════════════════
-    write_collection(tree, table_data, l1t=True)
-    
-    # ── Build the PyArrow table from the dictionary ══════════════════════════
-    table = pa.table(table_data)
+        # ── Full‑reco view ════════════════════════════════════════════════════════
+        full_grp = h5.require_group("FullReco")
+        write_collection(tree, full_grp, prefix="", l1t=False)
 
-    # ── Add Global metadata ══════════════════════════════════════════════════
-    metadata = {
-        "source_root": str(root_path),
-        "nEvents": str(tree.num_entries),
-    }
-    table = table.replace_schema_metadata(metadata)
-    
-    # ── Write to Parquet file ════════════════════════════════════════════════
-    pq.write_table(table, 
-                   out_path,
-                   compression="snappy",  
-                   row_group_size=1000000)
-    
-    
-    logging.info("✓ finished. Parquet size = %.1f MB", out_path.stat().st_size / 1e6)
+        # ── Level‑1 Trigger view ═════════════════════════════════════════════════
+        l1t_grp  = h5.require_group("L1T")
+        write_collection(tree, l1t_grp, prefix="L1T", l1t=True)
+
+        # ── Global metadata ══════════════════════════════════════════════════════
+        h5.attrs["source_root"] = str(root_path)
+        h5.attrs["nEvents"]     = len(tree)
+
+    logging.info("✓ finished. HDF5 size = %.1f MB", out_path.stat().st_size / 1e6)
 
 ################################################################################
 #                                 CLI PARSER                                   #
 ################################################################################
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Convert Delphes ROOT → Parquet.")
+    parser = argparse.ArgumentParser(description="Convert Delphes ROOT → HDF5.")
     parser.add_argument("input",  help="Input Delphes .root file")
-    parser.add_argument("output", help="Output .parquet file")
+    parser.add_argument("output", help="Output .h5 file")
     parser.add_argument("-v", "--verbose", action="store_true", help="More logging")
     args = parser.parse_args()
 
