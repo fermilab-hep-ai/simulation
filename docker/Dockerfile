@@ -9,7 +9,7 @@ ARG MG_VERSION_=3_5_8
 ARG MG_VERSION_x=3.5.x
 ARG BOOST_VERSION=1.88.0
 ARG MG5aMC_PY8_INTERFACE_VERSION=1.3
-ARG PYTHON_VERSION=3.10.6
+ARG PYTHON_VERSION=3.10.12
 ARG COMMIT_HASH=6360ca8ed0ff018735e3bfbc815ea2c4b23adfa9
 LABEL org.opencontainers.image.version=${DELPHES_VERSION}
 LABEL org.opencontainers.image.ref.name=latest
@@ -178,7 +178,7 @@ RUN mkdir -p /code && \
 
 
 # Install MadGraph5_aMC@NLO for Python 3
-# Madgraph patch fixes issue with ttbar parallelization  and sed commands fix bug in logger warning in some parallelized processes
+# Madgraph patch fixes issue with ttbar parallelization and sed command fixes bug in logger warning in some parallelized processes
 RUN cd /usr/local && \
     wget --no-check-certificate https://launchpad.net/mg5amcnlo/3.0/${MG_VERSION_x}/+download/MG5_aMC_v${MG_VERSION}.tar.gz && \
     tar -xzf MG5_aMC_v${MG_VERSION}.tar.gz && \
