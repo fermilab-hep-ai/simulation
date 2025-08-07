@@ -69,6 +69,7 @@ def submit_one_job_to_slurm(process, nevents, seed, outdir, simdir, istest):
     os.system(f'sbatch {log_path}/{label}.sbatch')
 
 def one_parallel_slurm_job_command(slurmscript, process, nevents, seed, outdir, simdir, logdir, istest, label, cores=4):
+    """Slurm command for a single job to run on a node, can be called multiple times for parallel jobs."""
     slurmscript.write(f"srun --exact --output={logdir}/{label}.out --error={logdir}/{label}.err -n 1 -c {cores} apptainer exec --bind {simdir} container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label} &\n")
     
 def read_csv_file(csvfile):
@@ -86,7 +87,7 @@ def read_csv_file(csvfile):
     return process_list, nevents_list, seed_list
 
 def submit_multiple_jobs(process_list, nevents_list, seed_list, jobname, outdir, simdir, istest, cores_per_process=8, multithreading=True):
-    """Submit multiple jobs to SLURM using a CSV file. Uses cores_per_process*n_processes cores in parallel."""
+    """Submit multiple jobs to SLURM given a list of jobs. Uses cores_per_process*n_processes cores in parallel."""
 
     # get absolute paths
     outdir = os.path.realpath(outdir)
@@ -115,8 +116,8 @@ def submit_multiple_jobs(process_list, nevents_list, seed_list, jobname, outdir,
     script_slurm = open(script_file, 'w')
     script_slurm.write(f'#!/bin/bash\n')
     script_slurm.write(f'#SBATCH --job-name={jobname}\n')
-    # script_slurm.write(f'#SBATCH --output={simdir}/logs/batchlogs/{jobname}.out\n')
-    # script_slurm.write(f'#SBATCH --error={simdir}/logs/batchlogs/{jobname}.err\n')
+    script_slurm.write(f'#SBATCH --output={simdir}/logs/batchlogs/{jobname}.out\n')
+    script_slurm.write(f'#SBATCH --error={simdir}/logs/batchlogs/{jobname}.err\n')
     if max(nevents_list) < 7501:
         script_slurm.write(f'#SBATCH --time=2:00:00\n')
     else:
@@ -166,7 +167,7 @@ def submit_multiple_jobs(process_list, nevents_list, seed_list, jobname, outdir,
     os.system(f'sbatch {script_file}')
     
 def batch_submission_from_csv(args):
-    """Read a CSV file and call submit_multiple_jobs appropriately."""
+    """Read a CSV file and call submit_multiple_jobs appropriately using the correct parallelization and job distribution."""
     process_list, nevents_list, seed_list = read_csv_file(args.csv)
     high_parallel = args.high_parallel
     n_processes = len(process_list)

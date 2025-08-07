@@ -175,7 +175,7 @@ root_file=$(find $tmpdir/Events/${run_file}/ -name "*.root")
 
 # transfer generated events
 mv $root_file $outdir/event.root
-#rm -r $tmpdir
+rm -r $tmpdir
 
 # convert root output file to parquet
 python3 ${simdir}/process_root_parquet.py $outdir/event.root $outdir/event.parquet

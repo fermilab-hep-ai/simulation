@@ -659,7 +659,7 @@ def main():
     if target.is_file() and target.suffix == ".root":
         rootfile = target
         # name the plots directory automatically unless --outdir given
-        outdir = Path(args.outdir) if args.outdir else rootfile.parent / "validation_plots"
+        outdir = Path(args.outdir) if args.outdir else rootfile.parent / "root_validation_plots"
         ensure_dir(outdir)
         proc   = rootfile.parent.name            # e.g.  γj-10000-42  → γj-10000-42
         make_plots(rootfile, outdir / f"{proc}_plots")
@@ -672,7 +672,7 @@ def main():
         sys.exit(f"'{target}' is neither a directory nor a *.root file.")
 
     repo = target
-    outdir = Path(args.outdir) if args.outdir else repo / "validation_plots"
+    outdir = Path(args.outdir) if args.outdir else repo / "root_validation_plots"
     ensure_dir(outdir)
 
     todo = collect_event_roots(repo)
