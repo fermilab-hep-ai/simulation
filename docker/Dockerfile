@@ -104,7 +104,6 @@ ENV LD_LIBRARY_PATH=$ROOTSYS/lib
 ENV PYTHIA8=/opt/pythia
 ENV LD_LIBRARY_PATH=$PYTHIA8/lib:$LD_LIBRARY_PATH
 
-
 # Install Delphes
 RUN mkdir -p /usr/local/share/delphes && \
     cd /usr/local/share/delphes && \
