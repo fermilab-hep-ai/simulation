@@ -81,7 +81,7 @@ RUN apt-get -qq -y update && \
     libz-dev \
     libzstd-dev \
     srm-ifce-dev \
-    uixodbc-dev \
+    unixodbc-dev \
     python-is-python3 \
     libtirpc-dev && \
     apt-get -y autoclean && \
