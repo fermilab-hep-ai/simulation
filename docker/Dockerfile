@@ -1,26 +1,112 @@
-ARG BUILDER_IMAGE=ghcr.io/scipp-atlas/mapyde/delphes
-FROM ${BUILDER_IMAGE} as builder
+FROM ubuntu:22.04
 ARG DELPHES_VERSION=3.5.0
-ARG LHAPDF_VERSION=6.3.0
+ARG LHAPDF_VERSION=6.5.5
 ARG PYTHIA_VERSION=8310
 ARG FASTJET_VERSION=3.3.4
 ARG HEPMC_VERSION=2.06.11
-ARG MG_VERSION=3.5.6
-ARG MG_VERSION_=3_5_6
+ARG MG_VERSION=3.5.8
+ARG MG_VERSION_=3_5_8
 ARG MG_VERSION_x=3.5.x
-ARG FASTJET_VERSION=3.3.4
-ARG BOOST_VERSION=1.76.0
+ARG BOOST_VERSION=1.88.0
 ARG MG5aMC_PY8_INTERFACE_VERSION=1.3
-ARG PYTHON_VERSION=3.8.10
+ARG PYTHON_VERSION=3.10.12
 ARG COMMIT_HASH=6360ca8ed0ff018735e3bfbc815ea2c4b23adfa9
+LABEL org.opencontainers.image.version=${DELPHES_VERSION}
+LABEL org.opencontainers.image.ref.name=latest
+ENV DEBIAN_FRONTEND=noninteractive
 
 USER root
 WORKDIR /usr/local
 
 SHELL [ "/bin/bash", "-c" ]
 
-RUN rm -rf /usr/local/share/delphes && \
-    mkdir -p /usr/local/share/delphes && \
+RUN apt-get -qq -y update && \
+    apt-get -qq -y install \
+    gcc \
+    g++ \
+    git \
+    gfortran \
+    make \
+    vim \
+    cmake \
+    ca-certificates \
+    davix-dev \
+    dcap-dev \
+    fonts-freefont-ttf \
+    locales \
+    bc \
+    zlib1g-dev \
+    libbz2-dev \
+    rsync \
+    tcl \
+    curl \
+    bash-completion \
+    python3-dev \
+    python3-pip \
+    python3-numpy \
+    less \
+    coreutils \
+    libboost-all-dev \
+    wget \
+    libafterimage-dev \
+    libcfitsio-dev \
+    libfcgi-dev \
+    libfftw3-dev \
+    libfreetype6-dev \
+    libftgl-dev \
+    libgfal2-dev \
+    libgif-dev \
+    libgl2ps-dev \
+    libglew-dev \
+    libglu-dev \
+    libgraphviz-dev \
+    libgsl-dev \
+    libjpeg-dev \
+    liblz4-dev \
+    liblzma-dev \
+    libmysqlclient-dev \
+    libpcre++-dev \
+    libpng-dev \
+    libpq-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    libtbb-dev \
+    libtiff-dev \
+    libx11-dev \
+    libxext-dev \
+    libxft-dev \
+    libxml2-dev \
+    libxpm-dev \
+    libxxhash-dev \
+    libz-dev \
+    libzstd-dev \
+    srm-ifce-dev \
+    uixodbc-dev \
+    python-is-python3 \
+    libtirpc-dev && \
+    apt-get -y autoclean && \
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/* && \
+    python3 -m pip install --no-cache-dir setuptools wheel \
+    pyhepmc pybind11 numpy graphviz particle pytest pyarrow==20.0.0 pandas
+
+RUN mkdir -p /opt && \
+    curl -sL https://root.cern/download/root_v6.36.02.source.tar.gz | tar -C /opt -zxf - && \
+    mkdir /opt/build && cd /opt/build && \
+    cmake -DCMAKE_INSTALL_PREFIX=/opt/root /opt/root-6.36.02 && \
+    cmake --build . --target install && \
+    rm -rf /opt/build
+    
+ENV ROOTSYS=/opt/root
+ENV PATH=$ROOTSYS/bin:$PATH
+ENV PYTHONPATH=$ROOTSYS/lib
+ENV LD_LIBRARY_PATH=$ROOTSYS/lib
+ENV PYTHIA8=/opt/pythia
+ENV LD_LIBRARY_PATH=$PYTHIA8/lib:$LD_LIBRARY_PATH
+
+
+# Install Delphes
+RUN mkdir -p /usr/local/share/delphes && \
     cd /usr/local/share/delphes && \
     git clone https://github.com/fermilab-hep-ai/delphes.git -b ${DELPHES_VERSION}-puppiw Delphes-${DELPHES_VERSION} && \
     cd Delphes-${DELPHES_VERSION} && \
@@ -30,31 +116,7 @@ RUN rm -rf /usr/local/share/delphes && \
     ln -s Delphes-${DELPHES_VERSION} ./delphes
 
 ENV DELPHES_PATH="/usr/local/share/delphes/delphes"
-ENV ROOT_INCLUDE_PATH=${ROOT_INCLUDE_PATH}:${DELPHES_PATH}:${DELPHES_PATH}/external
-
-RUN apt-get -qq -y update && \
-    apt-get -qq -y install \
-    gcc \
-    g++ \
-    gfortran \
-    make \
-    vim \
-    cmake \
-    bc \
-    zlibc \
-    zlib1g-dev \
-    libbz2-dev \
-    rsync \
-    curl \
-    bash-completion \
-    python3-dev \
-    less \
-    coreutils \
-    libboost-all-dev \
-    wget && \
-    apt-get -y autoclean && \
-    apt-get -y autoremove && \
-    rm -rf /var/lib/apt/lists/*
+ENV ROOT_INCLUDE_PATH=${DELPHES_PATH}:${DELPHES_PATH}/external
 
 # Install HepMC
 RUN mkdir /code && \
@@ -85,7 +147,7 @@ RUN mkdir /code && \
     ./configure --help && \
     export CXX=$(command -v g++) && \
     export PYTHON=$(command -v python3) && \
-    export PYTHON_CONFIG=/usr/bin/python-config && \
+    export PYTHON_CONFIG=/usr/bin/python3-config && \
     ./configure \
     --prefix=/usr/local \
     --enable-pyext=yes && \
@@ -156,11 +218,18 @@ RUN mkdir -p /code && \
 
 
 # Install MadGraph5_aMC@NLO for Python 3
+# Madgraph patch fixes issue with ttbar parallelization and sed command fixes bug in logger warning in some parallelized processes
 RUN cd /usr/local && \
     wget --no-check-certificate https://launchpad.net/mg5amcnlo/3.0/${MG_VERSION_x}/+download/MG5_aMC_v${MG_VERSION}.tar.gz && \
     tar -xzf MG5_aMC_v${MG_VERSION}.tar.gz && \
     chmod -R a+w /usr/local/MG5_aMC_v${MG_VERSION_}/ && \
     rm MG5_aMC_v${MG_VERSION}.tar.gz && \
+    echo "Patching madevent_interface.py" && \
+    cd /usr/local/MG5_aMC_v${MG_VERSION_}/ && \
+    wget --no-check-certificate https://github.com/mg5amcnlo/mg5amcnlo/commit/1cec098c51d8f3e5823c33d3dd06048825934d20.patch && \
+    git apply 1cec098c51d8f3e5823c33d3dd06048825934d20.patch && \ 
+    rm 1cec098c51d8f3e5823c33d3dd06048825934d20.patch && \
+    sed -i "s/^\([[:space:]]*\)logger\.warning('Gdirectory %s has no events\.lhe file\. (no BW config found %s times)' % G/\1pass # logger.warning('Gdirectory %s has no events.lhe file. (no BW config found %s times)' % G)/" /usr/local/MG5_aMC_v${MG_VERSION_}/madgraph/interface/madevent_interface.py && \
     echo "Installing MG5aMC_PY8_interface" && \
     mkdir /code && \
     cd /code && \
@@ -195,7 +264,7 @@ RUN export SED_RANGE="$(($(sed -n '\|enable bash completion in interactive shell
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-ENV HOME /home/docker
+ENV HOME=/home/docker
 WORKDIR ${HOME}/data
 RUN cp /root/.profile ${HOME}/.profile && \
     cp /root/.bashrc ${HOME}/.bashrc && \
@@ -204,14 +273,14 @@ RUN cp /root/.profile ${HOME}/.profile && \
     echo 'export PATH=${HOME}/.local/bin:$PATH' >> ${HOME}/.bashrc && \
     echo 'export PATH=/usr/local/MG5_aMC_v${MG_VERSION_}/bin:$PATH' >> ${HOME}/.bashrc && \
     echo 'alias ls="ls -ltrh --color"' >> ${HOME}/.bashrc && \
-    python3 -m pip install --upgrade --no-cache-dir pip setuptools wheel && \
+    python3 -m pip install --upgrade --ignore-installed --no-cache-dir pip setuptools wheel && \
     python3 -m pip install --no-cache-dir six numpy matplotlib uproot pyyaml
 
 ENV PYTHONPATH=/usr/local/lib:$PYTHONPATH
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-ENV PATH ${HOME}/.local/bin:$PATH
-ENV MG_VERSION_ "${MG_VERSION_}"
-ENV PATH /usr/local/MG5_aMC_v${MG_VERSION_}/bin:$PATH
+ENV PATH=${HOME}/.local/bin:$PATH
+ENV MG_VERSION_="${MG_VERSION_}"
+ENV PATH=/usr/local/MG5_aMC_v${MG_VERSION_}/bin:$PATH
 
 # Add models
 RUN cd /usr/local/MG5_aMC_v${MG_VERSION_}/models && \
@@ -268,6 +337,38 @@ RUN python3 /usr/local/bin/lhapdf install NNPDF31_nnlo_hessian_pdfas --pdfdir /u
 RUN chown -R root:root /usr/local/MG5_aMC_v${MG_VERSION_}/
 RUN chmod -R a+w       /usr/local/MG5_aMC_v${MG_VERSION_}/
 RUN chmod    a+x       $(find /usr/local/ -name pythia8-config)
+
+# Download and install Lua 5.4.7 from source
+RUN curl -L -R -O https://www.lua.org/ftp/lua-5.4.7.tar.gz && \
+    tar zxf lua-5.4.7.tar.gz && \
+    rm lua-5.4.7.tar.gz && \
+    cd lua-5.4.7 && \
+    make && \
+    make install INSTALL_TOP=/ && \
+    cd .. && \
+    rm -r lua-5.4.7
+# Clone and install luaposix in the correct location
+RUN git clone https://github.com/luaposix/luaposix.git && \
+    cd luaposix && \
+    lua build-aux/luke LUA=/bin/lua LUA_INCDIR=/include PREFIX=/usr INST_LIBDIR=/usr/lib64/lua/5.4 INST_LUADIR=/usr/share/lua/5.4 && \
+    lua build-aux/luke LUA=/bin/lua LUA_INCDIR=/include PREFIX=/usr INST_LIBDIR=/usr/lib64/lua/5.4 INST_LUADIR=/usr/share/lua/5.4 install && \
+    cd .. && \
+    rm -r luaposix
+# Clone, configure and install luafilesystem in the correct location
+RUN git clone https://github.com/lunarmodules/luafilesystem.git && \
+    cd luafilesystem && \
+    CONFIG_FILE="config" && \
+    NEW_PREFIX="/usr" && \
+    NEW_LUA_VERSION="5.4" && \
+    NEW_LUA_LIBDIR="${NEW_PREFIX}/lib64/lua/${NEW_LUA_VERSION}" && \
+    sed -i "s|^PREFIX=.*|PREFIX=${NEW_PREFIX}|" "$CONFIG_FILE" && \
+    sed -i "s|^LUA_VERSION *=.*|LUA_VERSION = ${NEW_LUA_VERSION}|" "$CONFIG_FILE" && \
+    sed -i "s|^LUA_LIBDIR=.*|LUA_LIBDIR= ${NEW_LUA_LIBDIR}|" "$CONFIG_FILE" && \
+    sed -i 's|^LUA_INC += -I$(PREFIX)/include|LUA_INC += -I$(PREFIX)/include -I/include|' "$CONFIG_FILE" && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -r luafilesystem
 
 ENTRYPOINT ["/bin/bash", "-l", "-c"]
 CMD ["/bin/bash"]
