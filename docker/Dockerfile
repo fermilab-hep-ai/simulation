@@ -29,11 +29,6 @@ RUN apt-get -qq -y update && \
     make \
     vim \
     cmake \
-    ca-certificates \
-    davix-dev \
-    dcap-dev \
-    fonts-freefont-ttf \
-    locales \
     bc \
     zlib1g-dev \
     libbz2-dev \
@@ -43,46 +38,15 @@ RUN apt-get -qq -y update && \
     bash-completion \
     python3-dev \
     python3-pip \
-    python3-numpy \
     less \
     coreutils \
     libboost-all-dev \
     wget \
-    libafterimage-dev \
-    libcfitsio-dev \
-    libfcgi-dev \
-    libfftw3-dev \
-    libfreetype6-dev \
     libftgl-dev \
-    libgfal2-dev \
     libgif-dev \
     libgl2ps-dev \
     libglew-dev \
-    libglu-dev \
-    libgraphviz-dev \
-    libgsl-dev \
-    libjpeg-dev \
-    liblz4-dev \
-    liblzma-dev \
-    libmysqlclient-dev \
-    libpcre++-dev \
-    libpng-dev \
-    libpq-dev \
-    libsqlite3-dev \
-    libssl-dev \
     libtbb-dev \
-    libtiff-dev \
-    libx11-dev \
-    libxext-dev \
-    libxft-dev \
-    libxml2-dev \
-    libxpm-dev \
-    libxxhash-dev \
-    libz-dev \
-    libzstd-dev \
-    srm-ifce-dev \
-    unixodbc-dev \
-    python-is-python3 \
     libtirpc-dev && \
     apt-get -y autoclean && \
     apt-get -y autoremove && \
@@ -91,18 +55,15 @@ RUN apt-get -qq -y update && \
     pyhepmc pybind11 numpy graphviz particle pytest pyarrow==20.0.0 pandas
 
 RUN mkdir -p /opt && \
-    curl -sL https://root.cern/download/root_v6.36.02.source.tar.gz | tar -C /opt -zxf - && \
-    mkdir /opt/build && cd /opt/build && \
-    cmake -DCMAKE_INSTALL_PREFIX=/opt/root /opt/root-6.36.02 && \
-    cmake --build . --target install && \
-    rm -rf /opt/build
-    
+    curl -sL https://root.cern/download/root_v6.36.02.Linux-ubuntu22.04-x86_64-gcc11.4.tar.gz | tar -C /opt -zxf -
+
 ENV ROOTSYS=/opt/root
 ENV PATH=$ROOTSYS/bin:$PATH
 ENV PYTHONPATH=$ROOTSYS/lib
 ENV LD_LIBRARY_PATH=$ROOTSYS/lib
 ENV PYTHIA8=/opt/pythia
 ENV LD_LIBRARY_PATH=$PYTHIA8/lib:$LD_LIBRARY_PATH
+
 
 # Install Delphes
 RUN mkdir -p /usr/local/share/delphes && \
