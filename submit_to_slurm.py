@@ -208,7 +208,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-o','--outdir', type=str, required=True,
-        help='output directory for logs')
+        help='output directory of the jobs')
 
     parser.add_argument('-n', '--nevents', type=int, default=1000,
         help='number of events to be processed, if ordering a single job')
