@@ -28,8 +28,6 @@ from pathlib import Path
 import numpy as np
 import awkward as ak
 import uproot
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 # ---------------------------------------------------------------------
 # Space–saving helper: cast high‑dynamic‑range float columns to float16
@@ -39,25 +37,17 @@ import pyarrow.parquet as pq
 # are O(1–10^4) in magnitude.
 # ---------------------------------------------------------------------
 SAFE_FLOAT16 = {
-    # 4‑vectors & MET
-    # "PT", "ET", "Eta", "Phi", "Mass", "E", "MET",
-    # # jet & PF extras
-    # "PuppiW",
+    "PT", "ET", "Eta", "Phi", "Mass", "E", "MET", "PuppiW"
+}
+
+SAFE_INT8 = {
+    "Charge", "PID", "IsPU", "BTag", "BTagPhys", "Status"
 }
 
 # Keep only the N highest‑pT PF candidates **per event** to control file size.
 MAX_PF_PER_EVENT = 200 #128 for L1T 
 PF_COLLECTION_KEYS = ()
 # PF_COLLECTION_KEYS = ("PFCand", "PUPPIPart")  # collections to be trimmed
-
-def _cast_maybe_half(name: str, arr: np.ndarray) -> np.ndarray:
-    """
-    Down‑cast to float16 if the branch name is in SAFE_FLOAT16 and the
-    dtype is floating.  Otherwise return the array unchanged.
-    """
-    if name in SAFE_FLOAT16 and np.issubdtype(arr.dtype, np.floating):
-        return arr.astype(np.float16, copy=False)
-    return arr
 
 logging.basicConfig(
     format="%(asctime)s — %(levelname)s — %(message)s",
@@ -209,7 +199,7 @@ def write_collection(tree, table_data, l1t=False):
         # Optional PF thinning: keep top‑N candidates by pT per event
         # -----------------------------------------------------------------
         keep_mask = None
-        if coll_key in PF_COLLECTION_KEYS:
+        if tag == "L1T" and coll_key in PF_COLLECTION_KEYS:
             pt_array = branch(tree, f"{full_prefix}.PT")
             if pt_array is not None:
                 # argsort returns ascending → take tail and build boolean mask
@@ -234,6 +224,14 @@ def write_collection(tree, table_data, l1t=False):
             # Apply thinning mask consistently to every column
             if keep_mask is not None:
                 arr = arr[keep_mask]
+            
+            # Cast to float16 if applicable
+            if var in SAFE_FLOAT16:
+                arr = ak.values_astype(arr, np.float16)
+
+            # Cast to int8 if applicable
+            if var in SAFE_INT8:
+                arr = ak.values_astype(arr, np.int8)
 
             column_name = f"{tag}_{coll_key}_{var}"
             table_data[column_name] = arr
@@ -262,7 +260,8 @@ def main(args):
 
     # ── Level‑1 Trigger view ═════════════════════════════════════════════════
     write_collection(tree, table_data, l1t=True)
-    
+
+    """
     # ── Build the PyArrow table from the dictionary ══════════════════════════
     table = pa.table(table_data)
 
@@ -276,8 +275,22 @@ def main(args):
     # ── Write to Parquet file ════════════════════════════════════════════════
     pq.write_table(table, 
                    out_path,
-                   compression="snappy",  
+                   compression="zstd",  
                    row_group_size=1000000)
+    """
+    # Build awkward record and write to Parquet
+    # Convert dictionary to awkward record
+    record = ak.zip(table_data, depth_limit=1)
+    
+    # Add metadata as parameter
+    metadata = {"source_root": str(root_path), "nEvents": str(tree.num_entries)}
+    record = ak.with_parameter(record, "__metadata__", metadata)
+
+    # Write to Parquet file
+    ak.to_parquet(record, 
+                  out_path,
+                  compression="zstd",
+                  row_group_size=1000000)
     
     
     logging.info("✓ finished. Parquet size = %.1f MB", out_path.stat().st_size / 1e6)
