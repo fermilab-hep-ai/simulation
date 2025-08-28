@@ -180,6 +180,15 @@ rm -r $tmpdir
 # convert root output file to parquet
 python3 ${simdir}/process_root_parquet.py $outdir/event.root $outdir/event.parquet
 
+# check if python3 script executed without error
+if [ $? -eq 0 ]; then
+    echo "Conversion to parquet finished successfully, deleting root file!"
+    rm -f $outdir/event.root
+else
+    echo "Conversion to parquet failed, keeping root file to run it again!"
+fi
+
+
 if [ "$is_test" = "True" ]; then
     # make validation plots
     # python3 ${simdir}/make_plots.py -p $outdir/ -v ${simdir}/validation_config.yaml
@@ -194,6 +203,7 @@ if [ "$is_test" = "True" ]; then
     echo "Time madevent: $elapsed_pythia_delphes seconds" >> $outdir/timing.txt
     echo "Time end-to-end execution: $elapsed_total" >> $outdir/timing.txt
 fi
+
 
 # all done
 echo Done!
