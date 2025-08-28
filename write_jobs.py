@@ -3,17 +3,20 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-n','--nevent-per-job', type=int, default=1000)
+    parser.add_argument('-n','--nevent-per-job', type=int, default=10000)
     parser.add_argument('-i','--seed-increment', type=int, default=1)
+    parser.add_argument('-o','--output-dir', type=str, default='job_csvs')
+    parser.add_argument('-f','--target-file', type=str, default='target_jobs.csv')
     args = parser.parse_args()
-    
-    with open('jobs.csv', 'w') as csvfile:
-        writer = csv.writer(csvfile, delimiter=',')
-        writer.writerow(["Process", "Nevents", "Seed"])
-        with open('num_proc.csv', 'r') as csvfile:
-            reader = csv.reader(csvfile, delimiter=',')
-            reader.__next__()
-            for process, nevents, seed_offset in reader:
+
+
+    with open(args.target_file, 'r') as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        reader.__next__()
+        for process, nevents, seed_offset in reader:
+            with open(f"{args.output_dir}/{process}_{nevents}.csv", 'w') as csvfile:
+                writer = csv.writer(csvfile, delimiter=',')
+                writer.writerow(["Process", "Nevents", "Seed"])
                 for i in range(int(nevents) // args.nevent_per_job):
                     writer.writerow([
                         process, 
@@ -28,3 +31,5 @@ def main():
                     ])
 if __name__ == "__main__":
     main()
+    
+        
