@@ -2985,8 +2985,8 @@ module TrackPileUpSubtractor L1TTrackPileUpSubtractor {
   set VertexInputArray  PileUpMerger/vertices   ;# same PV collection as offline
   # identical z-resolution formula as offline
   set ZVertexResolution {
-       (pt < 10.) * ((-0.8*log10(pt)+1.)*(10^(0.5*abs(eta)+1.5))*1e-06) +
-       (pt >=10.) * (0.2*(10^(0.5*abs(eta)+1.5))*1e-06)
+       (pt < 10.) * ((-0.8*log10(pt)+1.)*(10^(0.5*abs(eta)+1.5))*1e-03) +
+       (pt >=10.) * (0.2*(10^(0.5*abs(eta)+1.5))*1e-03)
   }
 }
 
