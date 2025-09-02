@@ -38,10 +38,17 @@ def extract_awkward_data(table, exp):
     try:
         if dataset_exists(table, exp):
             data = ak.from_arrow(table[exp])
+            dtype = data.type.content
+            while hasattr(dtype, "content"):
+                dtype = dtype.content
+            if dtype.primitive == "float16":
+                data = ak.values_astype(data, np.float32)
+            return data
+        else:
+            return None
     except KeyError:
         print(f"Expression '{exp}' not found in Parquet file.")
         return None
-    return data
 
 def draw(data, bins, name, color, ax=None, return_hist_data=False):
     """
@@ -344,8 +351,13 @@ def make_plots(table, out_dir):
     # 7) PUPPI weight  (offline & L1T)
     # ------------------------------------------------------------------- #
     fig, ax = plt.subplots(figsize=(10, 6))
-    puppi_weights_off = ak.flatten(extract_awkward_data(table, "FullReco_PUPPIPart_PuppiW"))
-    puppi_weights_l1t = ak.flatten(extract_awkward_data(table, "L1T_PUPPIPart_PuppiW"))
+    # Extract data and handle None returns
+    puppi_off_data = extract_awkward_data(table, "FullReco_PUPPIPart_PuppiW")
+    puppi_l1t_data = extract_awkward_data(table, "L1T_PUPPIPart_PuppiW")
+
+    # Only flatten if data exists
+    puppi_weights_off = ak.flatten(puppi_off_data) if puppi_off_data is not None else None
+    puppi_weights_l1t = ak.flatten(puppi_l1t_data) if puppi_l1t_data is not None else None
 
     bins = np.linspace(0, 1, 51)
     ax.set_yscale('log')
