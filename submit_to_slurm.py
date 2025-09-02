@@ -38,6 +38,7 @@ def submit_one_job_to_slurm(process, nevents, seed, outdir, simdir, istest):
     # load environment in cluster which supports singularity
     script_slurm.write(f'module purge\n')
     script_slurm.write(f'module load singularity/3.1.0\n')
+    script_slurm.write(f'module load GCC/13.3.0\n')
 
 
     script_slurm.write(f"mkdir -p {outdir}/{label}\n")
@@ -51,9 +52,12 @@ def submit_one_job_to_slurm(process, nevents, seed, outdir, simdir, istest):
     # download docker image from https://registry.hub.docker.com/r/jmduarte/mapyde
     # replace path to sif file
  #   script_slurm.write(f"apptainer exec --bind {simdir} --bind {simdir}/models:/usr/local/MG5_aMC_v3_5_6/models container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label}\n")
-    script_slurm.write(f"apptainer exec --bind {simdir} container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label}\n")
-    
-    
+    if process in ("minbias", "upsilon_to_leptons"):
+        script_slurm.write(f"{simdir}/run_minbias_upsilon.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label}\n")
+    else:
+        script_slurm.write(f"apptainer exec --bind {simdir} container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label}\n")
+
+
     # script_slurm.write(f"mv outdir/{label}/* {outdir}/{label}\n")
     # script_slurm.write(f"rm -r outdir/{label}\n")
     # for a safe version of cp for eos, comment the line above and uncomment the line below
@@ -63,15 +67,21 @@ def submit_one_job_to_slurm(process, nevents, seed, outdir, simdir, istest):
 
     # change permission
     os.system(f'chmod a+x {log_path}/{label}.sbatch')
-    os.system(f'chmod a+x {simdir}/run.sh')
+    if process in ("minbias", "upsilon_to_leptons"):
+        os.system(f'chmod a+x {simdir}/run_minbias_upsilon.sh')
+    else:
+        os.system(f'chmod a+x {simdir}/run.sh')
 
     # slurm file submission
     os.system(f'sbatch {log_path}/{label}.sbatch')
 
 def one_parallel_slurm_job_command(slurmscript, process, nevents, seed, outdir, simdir, logdir, istest, label, cores=4):
     """Slurm command for a single job to run on a node, can be called multiple times for parallel jobs."""
-    slurmscript.write(f"srun --exact --output={logdir}/{label}.out --error={logdir}/{label}.err -n 1 -c {cores} apptainer exec --bind {simdir} container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label} &\n")
-    
+    if process in ("minbias", "upsilon_to_leptons"):
+        slurmscript.write(f"srun --exact --output={logdir}/{label}.out --error={logdir}/{label}.err -n 1 -c {cores} {simdir}/run_minbias_upsilon.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label} &\n")
+    else:
+        slurmscript.write(f"srun --exact --output={logdir}/{label}.out --error={logdir}/{label}.err -n 1 -c {cores} apptainer exec --bind {simdir} container.sif {simdir}/run.sh {process} {nevents} {seed} {simdir} {outdir} {istest} {label} &\n")
+
 def read_csv_file(csvfile):
     """Read a CSV file and return a list of processes, nevents, and seeds."""
     with open(csvfile, 'r') as csvfile:
@@ -161,7 +171,10 @@ def submit_multiple_jobs(process_list, nevents_list, seed_list, jobname, outdir,
 
     # change permission
     os.system(f'chmod a+x {script_file}')
-    os.system(f'chmod a+x {simdir}/run.sh')
+    if process in ("minbias", "upsilon_to_leptons"):
+        os.system(f'chmod a+x {simdir}/run_minbias_upsilon.sh')
+    else:
+        os.system(f'chmod a+x {simdir}/run.sh')
 
     # slurm file submission
     os.system(f'sbatch {script_file}')
