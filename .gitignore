@@ -157,3 +157,12 @@ num_proc.csv
 jobs_test_4_multi.csv
 jobs_test_4_single.csv
 jobs_test_8_multi.csv
+delete_stuff.err
+.gitignore
+delete_stuff.out
+delphespythia.sif
+docker/Dockerfile_ubuntu_20_04
+apptainer/container_oldversion.sif
+post_process.out
+.gitignore
+post_process.err

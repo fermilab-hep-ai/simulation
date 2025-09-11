@@ -2,8 +2,8 @@ import cmd
 from glob import glob
 import os
 
-high_performance = True
-job_files = glob("job_csvs/batch20/*.csv")
+high_performance = False
+job_files = glob("job_csvs/batch22/*.csv")
 
 for job_file in job_files:
     print(f"Processing {job_file}")
