@@ -24,11 +24,10 @@ def submit_one_job_to_slurm(process, nevents, seed, outdir, simdir, istest):
         script_slurm.write(f'#SBATCH --time=2:00:00\n')
     else:
         script_slurm.write(f'#SBATCH --time=6:00:00\n')
-    script_slurm.write(f'#SBATCH --mem=4G\n')
+    script_slurm.write(f'#SBATCH --mem=90G\n')
     script_slurm.write(f'#SBATCH --nodes=1\n')
     script_slurm.write(f'#SBATCH --ntasks-per-node=1\n')
-    script_slurm.write(f'#SBATCH --cpus-per-task=48\n')
-
+    script_slurm.write(f'#SBATCH --threads-per-core=2\n')
     script_slurm.write(f'#SBATCH --account=laionize\n')
     if nevents < 10000:
         script_slurm.write(f'#SBATCH --partition=devel\n')
@@ -183,8 +182,31 @@ def batch_submission_from_csv(args):
     """Read a CSV file and call submit_multiple_jobs appropriately using the correct parallelization and job distribution."""
     process_list, nevents_list, seed_list = read_csv_file(args.csv)
     high_parallel = args.high_parallel
+    low_parallel = args.low_parallel
     n_processes = len(process_list)
-    if n_processes <= 12:
+    if args.no_parallel:
+        print("Running each job on a single node.")
+        for process, nevents, seed in zip(process_list, nevents_list, seed_list):
+            submit_one_job_to_slurm(process, nevents, seed, args.outdir, args.simdir, args.test)
+        return
+    if low_parallel and high_parallel:
+        print("Error: Cannot use both low_parallel and high_parallel options at the same time.")
+        return
+    elif n_processes <= 6:
+        print(f"Submitting {n_processes} processes to SLURM")
+        submit_multiple_jobs(process_list, nevents_list, seed_list, args.label, args.outdir, args.simdir, args.test, cores_per_process=16, multithreading=True)
+    elif low_parallel:
+        print(f"Dividing {n_processes} processes into smaller batches of max 6 processes each")
+        n_batches = (n_processes + 5) // 6
+        for i in range(n_batches):
+            start = i * 6
+            end = min((i + 1) * 6, n_processes)
+            batch_processes = process_list[start:end]
+            batch_nevents = nevents_list[start:end]
+            batch_seeds = seed_list[start:end]
+            print(f"Submitting batch {i+1}/{n_batches} to SLURM with {len(batch_processes)} processes and 16 cores per process.")
+            submit_multiple_jobs(batch_processes, batch_nevents, batch_seeds, f"{args.label}_batch_{i+1}", args.outdir, args.simdir, args.test, cores_per_process=16, multithreading=True)
+    elif n_processes <= 12:
         print(f"Submitting {n_processes} processes to SLURM")
         submit_multiple_jobs(process_list, nevents_list, seed_list, args.label, args.outdir, args.simdir, args.test, cores_per_process=8, multithreading=True)
     elif n_processes <= 24 and high_parallel:
@@ -247,6 +269,12 @@ if __name__ == '__main__':
     parser.add_argument('-hp', '--high_parallel', action='store_true',
         help='enable high parallel mode for multiple jobs, which allows for 24 processes per batch instead of 12.')
 
+    parser.add_argument('-lp', '--low_parallel', action='store_true',
+        help='enable low parallel mode for multiple jobs, which allows for 6 processes per batch instead of 12.')
+
+    parser.add_argument('-np', '--no_parallel', action='store_true',
+        help='disable parallel mode for multiple jobs, run each on a single node.')
+    
     args = parser.parse_args()
 
     # change permission to the submission folder so that we could copy it
