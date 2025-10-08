@@ -30,7 +30,9 @@ def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
     
     # This is for Delphes downloaded from dockerhub (not used unless testing)
     #script_src.write(f"apptainer exec --bind {simdir} docker://jmduarte/mapyde sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
+    #script_src.write(f"apptainer exec --bind {simdir} docker://ericmoreno0/mapyde-delphes:modified sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
     
+
     # These are for custom local delphes config (not used unless testing)
     #script_src.write(f"{simdir}/DelphesHepMC3 {simdir}/cards/delphes_card_CMS.tcl {outdir}/{label}/output.root {simdir}/input_file.hepmc\n")
     #script_src.write(f"sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
@@ -49,12 +51,16 @@ def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
     script_condor.write('request_cpus = 1\n')
     script_condor.write('request_memory = 4G\n')
     script_condor.write('request_disk = 20G\n')
-    script_condor.write(f'output = {log_path}/{label}.out\n')
-    script_condor.write(f'error = {log_path}/{label}.err\n')
-    script_condor.write(f'log = {log_path}/{label}.log\n')
-    script_condor.write(f'transfer_output_files=""\n')
+    script_condor.write('should_transfer_files = YES\n')
+    script_condor.write('when_to_transfer_output = ON_EXIT\n')
+    script_condor.write('notification = Never\n')
+    script_condor.write('output = /dev/null\n')
+    script_condor.write('error  = /dev/null\n')
+    # omit the job event log to avoid AFS usage
+    # (leaving out the 'log =' line entirely is supported by HTCondor)
     # script_condor.write('use_x509userproxy = true\n')
-    script_condor.write('WhenToTransferOutput = ON_EXIT\n')
+    script_condor.write('transfer_output_files = ""\n')
+    
     script_condor.write('want_graceful_removal = true\n')
     script_condor.write('on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)\n')
     script_condor.write('max_retries = 3\n')
