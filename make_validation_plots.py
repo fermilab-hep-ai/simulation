@@ -169,20 +169,21 @@ def make_plots(rootfile, out_dir):
     )
 
     # protect against completely empty events
-    pmax = pmax * 2     # +10 % buffer
+    pmax = 100     # +10 % buffer
     #pmax = pmax + 50    # +50 GeV buffer
     #pmax = 150
-    bins = f"(60,0,{int(pmax)})"
+    bins = f"(30,0,{int(pmax)})"
 
     stack = ROOT.THStack("hsLeadJet",
                         ";jet p_{T}  [GeV];Events")
 
     # colours / styles
-    col = { "leadPF" : OFF,
-            "leadL1" : L1,
-            "subPF"  : ROOT.kAzure+2,
-            "subL1"  : ROOT.kGreen+3 }
-
+    col = {
+    "leadPF": ROOT.TColor.GetColor("#08519c"),  # deep blue
+    "subPF":  ROOT.TColor.GetColor("#6baed6"),  # light blue
+    "leadL1": ROOT.TColor.GetColor("#006d2c"),  # deep green
+    "subL1":  ROOT.TColor.GetColor("#74c476"),  # light green
+        }
     # 1) leading PF
     h_leadPF = draw(t,"Jet.PT[0]","", bins, "hLeadPF", col["leadPF"])
     stack.Add(h_leadPF)
@@ -225,12 +226,12 @@ def make_plots(rootfile, out_dir):
     # ------------------------------------------------------------------- #
     # 3) Event H_T   (offline vs L1)
     # ------------------------------------------------------------------- #
-    h_pf = draw(t,"Sum$(Jet.PT*(abs(Jet.Eta)<2.4))","", "(60,0,1500)", "Offline HT",OFF)
+    h_pf = draw(t,"Sum$(Jet.PT*(abs(Jet.Eta)<2.4))","", "(30,0,300)", "Offline HT",OFF)
     h_pf.GetXaxis().SetTitle("H_{T} (|η|<2.4)  [GeV]")
     h_pf.Draw("hist")
     if branch_exists(t,"L1TJet.PT"):
         h_l1 = draw(t,"Sum$(L1TJet.PT*(abs(L1TJet.Eta)<2.4))","",
-                    "(60,0,1500)", "L1T HT", L1); h_l1.Draw("hist SAME")
+                    "(30,0,300)", "L1T HT", L1); h_l1.Draw("hist SAME")
     c.BuildLegend(0.60,0.70,0.88,0.88,"").SetBorderSize(0)
     c.SaveAs(f"{out_dir}/03_EventHT.png")
     h_keep.extend([h_pf, h_l1] if branch_exists(t,"L1TJet.PT") else [h_pf])
@@ -249,7 +250,8 @@ def make_plots(rootfile, out_dir):
     if branch_exists(t,"MissingET.MET"):          # need at least one to draw
         met_max = max([t.GetMaximum(br) for br,_,_ in met_branches if branch_exists(t,br)])
         met_max = 200 if met_max < 200 else met_max*1.10
-        bins = f"(60,0,{int(met_max)})"
+        met_max = 150
+        bins = f"(30,0,{int(met_max)})"
 
         entries = []
         first = True
@@ -279,14 +281,14 @@ def make_plots(rootfile, out_dir):
     # 5) MET response (Reco and L1)
     # ------------------------------------------------------------------- #
     if branch_exists(t,"GenMissingET"):
-        sel   = "GenMissingET.MET>10"
+        sel   = "GenMissingET.MET>50"
         h_resp = draw(t,"MissingET.MET/GenMissingET.MET", sel,
-                      "(50,0,2)", "METRespOffline", OFF)
-        h_resp.GetXaxis().SetTitle("Reco MET / Gen MET (Gen MET>10 GeV)")
+                      "(30,0,2)", "METRespOffline", OFF)
+        h_resp.GetXaxis().SetTitle("Reco MET / Gen MET (Gen MET>50 GeV)")
         h_resp.Draw("hist")
         if branch_exists(t,"L1TMissingET"):
             h_rL1 = draw(t,"L1TMissingET.MET/GenMissingET.MET", sel,
-                         "(50,0,2)", "METRespL1", L1); h_rL1.Draw("hist SAME")
+                         "(30,0,2)", "METRespL1", L1); h_rL1.Draw("hist SAME")
         c.BuildLegend(0.58,0.72,0.88,0.88,"").SetBorderSize(0)
         c.SaveAs(f"{out_dir}/05_MET_Response.png")
         h_keep.append(h_resp)

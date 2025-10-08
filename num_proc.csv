@@ -1,9 +1,3 @@
 Process,Nevents,seed_offset
-DYJetsToLL_13TeV-madgraphMLM-pythia8,100000,0
-QCD_HT50toInf,100000,100000
-tt0123j_5f_ckm_LO_MLM_hadronic,100000,200000
-tt0123j_5f_ckm_LO_MLM_leptonic,100000,300000
-tt0123j_5f_ckm_LO_MLM_semiLeptonic,100000,400000
-WJetsToLNu_13TeV-madgraphMLM-pythia8,100000,500000
-WJetsToQQ_13TeV-madgraphMLM-pythia8,100000,600000
-ZJetsToQQ_13TeV-madgraphMLM-pythia8,100000,700000
+DYJetsToLL_13TeV-madgraphMLM-pythia8,1000,100
+QCD_HT50toInf,1000,100

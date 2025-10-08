@@ -50,7 +50,7 @@ fi
 
 cp ${simdir}/processes/${proc}/${proc}_proc_card.dat tmpdir/proc_card.dat
 sed -i -e "s@_OUTDIR_@tmpdir@g" tmpdir/proc_card.dat
-/usr/local/MG5_aMC_v3_5_6/bin/mg5_aMC tmpdir/proc_card.dat
+/usr/local/MG5_aMC_v3_5_8/bin/mg5_aMC tmpdir/proc_card.dat
 ls -l tmpdir/bin/
 ls tmpdir/bin/madevent
 if [ "$is_test" = "True" ]; then
@@ -91,7 +91,20 @@ fi
 
 if [ -e ${simdir}/processes/${proc}/${proc}_madspin_card.dat ]; then
   cp ${simdir}/processes/${proc}/${proc}_madspin_card.dat tmpdir/Cards/madspin_card.dat
-  sed -i -e "s@_OUTDIR_@tmpdir@g" tmpdir/Cards/madspin_card.dat
+  #sed -i -e "s@_OUTDIR_@tmpdir@g" tmpdir/Cards/madspin_card.dat
+
+  #---- NEW: patch the MadSpin grid placeholder ------------------------------
+  # The VBFH MadSpin card uses the literal string MADSPINGRID.  Replace it
+  # with an absolute path to the grid that will be produced in the MG5 run.
+  sed -i -e "s@MADSPINGRID@${workdir}/tmpdir/madspin_grid@g" \
+         tmpdir/Cards/madspin_card.dat
+  #---------------------------------------------------------------------------
+fi
+
+if [ -e ${simdir}/processes/${proc}/${proc}_pythia8_card.dat ]; then
+  echo "copying custom pythia8 card"
+  cp ${simdir}/processes/${proc}/${proc}_pythia8_card.dat \
+     tmpdir/Cards/pythia8_card.dat
 fi
 
 if [ -e ${simdir}/main43.cc ]; then
@@ -106,11 +119,18 @@ if [ -e ${simdir}/main43.cc ]; then
   /usr/local/share/delphes/Delphes-3.5.0/hepmc2pileup tmpdir/QCD/results/SoftQCD.pileup tmpdir/QCD/results/hepmcout_SoftQCD_MC_${seed}.data
 fi
 
-echo "set nevents ${nevts}" >> tmpdir/Cards/launchrun.dat
+# Bring in extra user commands, stripping blank lines & comments
 if [ -e ${simdir}/processes/${proc}/${proc}_customizecards.dat ]; then
-        cat ${simdir}/processes/${proc}/${proc}_customizecards.dat | sed '/^$/d;/^#.*$/d' >> tmpdir/Cards/launchrun.dat
-        echo "" >> tmpdir/Cards/launchrun.dat
+    sed '/^$/d;/^[[:space:]]*#/d' \
+        ${simdir}/processes/${proc}/${proc}_customizecards.dat \
+        >> tmpdir/Cards/launchrun.dat
+    echo "" >> tmpdir/Cards/launchrun.dat
 fi
+
+if [ -e ${simdir}/processes/${proc}/${proc}_madspin_card.dat ]; then
+  echo "madspin=on" >> tmpdir/Cards/launchrun.dat
+fi
+
 echo "done" >> tmpdir/Cards/launchrun.dat
 
 # change delphes source code delphes/external/PUPPI/PuppiContainer.cc and replace if(pWeight == 0) continue; with //if(pWeight == 0) continue;
@@ -135,26 +155,84 @@ if [ "$is_test" = "True" ]; then
     start_time_pythia_delphes="$(date -u +%s)"
 fi
 tmpdir/bin/madevent tmpdir/Cards/launchrun.dat
+
+echo "Contents of Events/ after madevent:"
+ls -R tmpdir/Events
+
 if [ "$is_test" = "True" ]; then
     end_time_pythia_delphes="$(date -u +%s)"
 fi
 
 
 # transfer generated events
-mv tmpdir/Events/*/*.root outdir/event.root
+#mv tmpdir/Events/*/*.root outdir/event.root
 
-python3 ${simdir}/process_root_H5.py \
-        outdir/event.root \
-        outdir/event.h5 \
+if [ -e ${simdir}/processes/${proc}/${proc}_madspin_card.dat ]; then
+    run_dir=run_01_decayed_1
+else
+    run_dir=run_01
+fi
 
-# If you would rather **replace** the original, uncomment the next line
-# mv -f outdir/event_skim.root outdir/event.root
+# root_file=$(find "tmpdir/Events/${run_dir}/" -maxdepth 1 -name "*.root" | head -n 1)
+# final_root="outdir/event.root"
+# mv  "${root_file}"  "${final_root}"
 
+root_file=$(find "tmpdir/Events/${run_dir}/" -maxdepth 1 -name "*.root" | head -n 1)
+# Process ROOT in-place from tmpdir; do not move into outdir (saves space)
+final_root="${root_file}"
+
+
+
+python3 -m pip install --no-cache-dir --upgrade --user pyarrow
+
+python3  "${simdir}/process_root_parquet.py"  \
+         "${final_root}"                 \
+         "outdir/event.parquet"
+conv_status=$?
+
+# ----------------------------------------------------------------------
+# Validation plots  (always, before deletion)
+# ----------------------------------------------------------------------
+valdir="outdir/validation_plots"
+mkdir -p "${valdir}"
+
+# 3a. Quick one-shot plots (your existing script)
+# python3 "${simdir}/make_plots.py" \
+#         -p outdir/ \
+#         -v "${simdir}/validation_config.yaml"
+ret_plots=$?
+
+# 3b. Full validation over *this* ROOT file only
+# python3 "${simdir}/make_validation_plots.py" \
+#         "${final_root}" \
+#         --outdir "${valdir}"
+ret_val_root=$?
+
+# 3c. Parquet-based validation (use the Parquet we just wrote)
+# python3 "${simdir}/make_validation_plots_parquet.py" \
+#         "outdir/event.parquet" \
+#         --outdir "${valdir}"
+ret_val_parquet=$?
+
+# ----------------------------------------------------------------------
+# Delete ROOT only after successful conversion and validations (not in test)
+# ----------------------------------------------------------------------
 if [ "$is_test" = "True" ]; then
-    # make validation plots
-    python3 ${simdir}/make_plots.py -p outdir/ -v ${simdir}/validation_config.yaml
+    echo "Test mode: keeping ROOT file ${final_root} for inspection."
+else
+    if [ ${conv_status} -eq 0 ] && [ -s "outdir/event.parquet" ] \
+       && [ ${ret_plots} -eq 0 ] && [ ${ret_val_root} -eq 0 ] && [ ${ret_val_parquet} -eq 0 ]; then
+        echo "All validations passed; deleting ROOT file ${final_root}."
+        rm -f "${final_root}"
+    else
+        echo "Conversion or validation failed; keeping ROOT file ${final_root}."
+    fi
+fi
 
-    # timing monitor dump
+# ----------------------------------------------------------------------
+# Timing monitor dump (only in test mode)
+# ----------------------------------------------------------------------
+if [ "$is_test" = "True" ]; then
     end_time="$(date -u +%s)"
     elapsed_madgraph="$(($end_time_madgraph-$start_time_madgraph))"
     elapsed_pythia_delphes="$(($end_time_pythia_delphes-$start_time_pythia_delphes))"
