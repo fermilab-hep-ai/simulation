@@ -218,7 +218,15 @@ ret_val_parquet=$?
 # Delete ROOT only after successful conversion and validations (not in test)
 # ----------------------------------------------------------------------
 if [ "$is_test" = "True" ]; then
-    echo "Test mode: keeping ROOT file ${final_root} for inspection."
+    mkdir -p outdir
+    label="${proc}-${nevts}-${seed}"
+    if [ -n "${final_root}" ] && [ -s "${final_root}" ]; then
+        cp -f "${final_root}" "outdir/${label}.root"
+        echo "Saved test ROOT to outdir/${label}.root"
+    else
+        echo "WARNING: (test mode) final_root not found or empty; nothing to copy to outdir/" >&2
+    fi
+    
 else
     if [ ${conv_status} -eq 0 ] && [ -s "outdir/event.parquet" ] \
        && [ ${ret_plots} -eq 0 ] && [ ${ret_val_root} -eq 0 ] && [ ${ret_val_parquet} -eq 0 ]; then
