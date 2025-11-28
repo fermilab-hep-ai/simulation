@@ -41,7 +41,19 @@ SAFE_FLOAT16 = {
 }
 
 SAFE_INT8 = {
-    "Charge", "PID", "IsPU", "BTag", "BTagPhys", "Status"
+    "Charge", "IsPU", "BTag", "BTagPhys", "Status"
+}
+
+SAFE_INT16 = {
+    "ConstituentsIdx", 
+}
+
+SAFE_UINT32 = {
+    "fUniqueID", "Constituents"
+}
+
+SAFE_INT32 = {
+    "PID"
 }
 
 # Keep only the N highest‑pT PF candidates **per event** to control file size.
@@ -60,15 +72,17 @@ logging.basicConfig(
 
 # -- Mapping of logical collection names to Delphes branch prefixes -----------
 # Adapt as needed for your custom Delphes card.
+# If you want to add an index mapping, specify "constit_target" with the name
+# of the collection whose fUniqueIDs correspond to the ones in the Constituents array. 
 COLLECTIONS = {
-    "PFCand": {
-        "prefix": "EFlowCHS",
-        "vars": [
-            "PT", "Eta", "Phi", "PID", "Charge", "Mass",
-            "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID",
-            "PuppiW", #"IsPU"
-        ],
-    },
+    #"PFCand": {
+    #    "prefix": "EFlowCHS",
+    #    "vars": [
+    #        "PT", "Eta", "Phi", "PID", "Charge", "Mass",
+    #        "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID",
+    #        "PuppiW", "IsPU"
+    #    ],
+    #},
     # "EFlowTrack": {
     #     "prefix": "EFlowTrack",
     #     "vars": [
@@ -88,9 +102,9 @@ COLLECTIONS = {
         "prefix": "EFlowPuppi",
         "vars": [
             "PT", "Eta", "Phi", "Charge", "Mass", "PID",
-            "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID", "PuppiW", #"IsPU"
+            "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID", "PuppiW", "IsPU"
         ],
-    }, #MAYBE REMOVE 
+    },
 
     "Electron": {
         "prefix": "Electron",
@@ -124,10 +138,17 @@ COLLECTIONS = {
         "vars": ["PT", "Eta", "Phi"],
     },
     # Jets
-    "JetAK4":               {"prefix": "Jet",               "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
-    "JetAK8":               {"prefix": "JetAK8",            "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
-    "JetPuppiAK4":          {"prefix": "JetPUPPI",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
-    "JetPuppiAK8":          {"prefix": "JetPUPPIAK8",       "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
+    #"JetAK4":               {"prefix": "Jet",               "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
+    #"JetAK8":               {"prefix": "JetAK8",            "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
+    "JetPuppiLoose":          {"prefix": "JetPUPPILoose",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"],
+                               "constit_target": "PUPPIPart"},
+    "JetPuppiTight":          {"prefix": "JetPUPPITight",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"], 
+                               "constit_target": "PUPPIPart"},
+    
+    "JetPuppiAK4":          {"prefix": "JetPUPPI",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"],
+                               "constit_target": "PUPPIPart"},
+    "JetPuppiAK8":          {"prefix": "JetPUPPIAK8",       "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"],
+                               "constit_target": "PUPPIPart"},
     # MET
     "MET":                  {"prefix": "MissingET",         "vars": ["MET", "Phi", "Eta"]},
     "PUPPIMET":             {"prefix": "PuppiMissingET",    "vars": ["MET", "Phi", "Eta"]},
@@ -177,6 +198,65 @@ def branch(tree, br_name):
         logging.warning("Branch %s not found, skipping.", br_name)
         return None
 
+def sort_collection(jagged_arrays, sort_key):
+    """
+    Used for pT sorting of collections.
+    jagged_arrays: dict {var_name: awkward_array}
+    sort_key: awkward array used to generate sort order
+    Returns dict of sorted arrays.
+    """
+    # Only sort per event (axis=1: object-level)
+    idx = ak.argsort(sort_key, axis=1, ascending=False)
+
+    # Apply permutation to all arrays
+    return {k: v[idx] for k, v in jagged_arrays.items()}
+
+def add_index_mapping(constituent_arr, fUniqueID_arr):
+    """
+    Given a jagged array of constituents (with fUniqueID values) and a jagged
+    array of object (particle/vertex) fUniqueID values, build an additional index mapping with
+    the same function
+
+    Returns an Awkward array of the same shape as constituent_arr,
+    filled with object (particles/vertices) indices or -1.
+    """
+
+    out = []
+
+    # Loop over events
+    for constits, uids in zip(constituent_arr, fUniqueID_arr):
+
+        # Convert to numpy for speed
+        uids_np = np.asarray(uids)
+
+        # Sort PF fUniqueIDs; they do NOT need to be sorted beforehand
+        sort_idx = np.argsort(uids_np)
+        uids_sorted = uids_np[sort_idx]
+
+        # Constituents → flat numpy
+        const_np = ak.to_numpy(ak.flatten(constits))
+
+        # Vectorized binary search
+        pos = np.searchsorted(uids_sorted, const_np)
+
+        # Check validity: searchsorted gives "insert position", must verify match
+        mask_valid = (
+            (pos < len(uids_sorted)) &
+            (uids_sorted[pos] == const_np)
+        )
+
+        # Map from sorted index → original PF index, or -1
+        idx_flat = np.where(mask_valid, sort_idx[pos], -1)
+
+        # Reshape back to jagged structure
+        idx_jagged = ak.unflatten(idx_flat, ak.num(constits, axis=1))
+
+        out.append(idx_jagged)
+
+    return ak.Array(out)
+
+
+
 
 def write_collection(tree, table_data, l1t=False):
     """
@@ -211,32 +291,99 @@ def write_collection(tree, table_data, l1t=False):
 
         logging.debug(" • %s", coll_key)
 
+        # ---------------------------------------------------------------
+        # Load all variables for this collection into a temporary dict
+        # ---------------------------------------------------------------
+        arrays = {}
+
         for var in vars_:
             br = f"{full_prefix}.{var}"
             arr = branch(tree, br)
-            if var == 'Constituents' and arr is not None:
-                # This array is stored by root as a dictionary with .refs containing the constituent indices
-                # The rest of the dictionary is useless
-                arr=arr.refs 
+
             if arr is None:
                 continue
 
-            # Apply thinning mask consistently to every column
+            if var == "Constituents":
+                arr = arr.refs  # strip ROOT wrapper
+
+            # Apply PF thinning mask before sorting
             if keep_mask is not None:
                 arr = arr[keep_mask]
-            
-            # Cast to float16 if applicable
+
+            arrays[var] = arr
+
+        # Skip empty collections
+        if not arrays:
+            continue
+
+        # ---------------------------------------------------------------
+        # Choose sort variable for this collection and sort
+        # ---------------------------------------------------------------
+        if coll_key == "PrimaryVertex":
+            sort_var = "SumPT2"
+        else:
+            sort_var = "PT"
+
+        if sort_var not in arrays:
+            logging.warning(f"Sort variable {sort_var} missing in {coll_key}, skipping sort.")
+            sorted_arrays = arrays
+        else:
+            sorted_arrays = sort_collection(arrays, arrays[sort_var])
+
+        # ---------------------------------------------------------------
+        # If this collection has a variable "Constituents", build index mapping
+        # ---------------------------------------------------------------
+        constit_target = cfg.get("constit_target", None)
+
+        if "Constituents" in sorted_arrays and constit_target is not None:
+            # The PF candidate array for this tag should already exist in table_data
+            target_key = f"{tag}_{constit_target}_fUniqueID"
+
+            if target_key not in table_data:
+                logging.warning(
+                    f"{coll_key} specifies constit_target={constit_target} "
+                    f"but particle fUniqueID array {target_key} is not available."
+                )
+            else:
+                try:
+                    idx_map = add_index_mapping(
+                        sorted_arrays["Constituents"],
+                        table_data[target_key]
+                    )
+                    sorted_arrays["ConstituentsIdx"] = idx_map
+                except Exception as e:
+                    logging.error(
+                        f"Failed to compute ConstituentIdx for {coll_key}: {e}"
+                    )
+
+        
+        # ---------------------------------------------------------------
+        # Cast types *after* sorting and store in table_data
+        # ---------------------------------------------------------------
+        for var, arr in sorted_arrays.items():
+
             if var in SAFE_FLOAT16:
                 arr = ak.values_astype(arr, np.float16)
 
-            # Cast to int8 if applicable
             if var in SAFE_INT8:
                 arr = ak.values_astype(arr, np.int8)
+                
+            if var in SAFE_INT16:
+                arr = ak.values_astype(arr, np.int16)
+                
+            if var in SAFE_INT32:
+                arr = ak.values_astype(arr, np.int32)
+                
+            if var in SAFE_UINT32:
+                arr = ak.values_astype(arr, np.uint32)
 
-            column_name = f"{tag}_{coll_key}_{var}"
-            table_data[column_name] = arr
-            logging.debug("  • %s", column_name)
-            
+            if coll_key.startswith("Gen"):
+                colname = f"{coll_key}_{var}"
+                colname = colname.replace("Gen", "Gen_")
+            else:
+                colname = f"{tag}_{coll_key}_{var}"
+                
+            table_data[colname] = arr            
             
     logging.info("Done with %s", tag)
 
