@@ -9,7 +9,9 @@ simdir=$4
 is_test=$5
 
 if [ "$is_test" = "True" ]; then
-   start_time="$(date -u +%s)"
+    start_time="$(date -u +%s)"
+    # ensure test artifacts live here
+    mkdir -p outdir
 fi
 
 workdir=$(pwd)
@@ -217,6 +219,7 @@ ret_val_parquet=$?
 # ----------------------------------------------------------------------
 # Delete ROOT only after successful conversion and validations (not in test)
 # ----------------------------------------------------------------------
+
 if [ "$is_test" = "True" ]; then
     mkdir -p outdir
     label="${proc}-${nevts}-${seed}"
