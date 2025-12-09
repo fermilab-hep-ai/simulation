@@ -140,15 +140,16 @@ COLLECTIONS = {
     # Jets
     #"JetAK4":               {"prefix": "Jet",               "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
     #"JetAK8":               {"prefix": "JetAK8",            "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
-    "JetPuppiLoose":          {"prefix": "JetPUPPILoose",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"],
-                               "constit_target": "PUPPIPart"},
-    "JetPuppiTight":          {"prefix": "JetPUPPITight",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"], 
-                               "constit_target": "PUPPIPart"},
+    #"JetPuppiLoose":          {"prefix": "JetPUPPILoose",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"],
+    #                           "constit_target": "PUPPIPart"},
+    #"JetPuppiTight":          {"prefix": "JetPUPPITight",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"], 
+    #                           "constit_target": "PUPPIPart"},
     
     "JetPuppiAK4":          {"prefix": "JetPUPPI",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"],
-                               "constit_target": "PUPPIPart"},
+                              "constit_target": "PUPPIPart"},
     "JetPuppiAK8":          {"prefix": "JetPUPPIAK8",       "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"],
-                               "constit_target": "PUPPIPart"},
+                              "constit_target": "PUPPIPart"},
+    
     # MET
     "MET":                  {"prefix": "MissingET",         "vars": ["MET", "Phi", "Eta"]},
     "PUPPIMET":             {"prefix": "PuppiMissingET",    "vars": ["MET", "Phi", "Eta"]},
@@ -380,8 +381,15 @@ def write_collection(tree, table_data, l1t=False):
             if coll_key.startswith("Gen"):
                 colname = f"{coll_key}_{var}"
                 colname = colname.replace("Gen", "Gen_")
+                print(colname)
+            
+            #make separate collection also for vertex
+            elif coll_key.startswith("PrimaryVertex"):
+                colname = f"PrimaryVertex_{var}" 
+                print(colname)
             else:
                 colname = f"{tag}_{coll_key}_{var}"
+                print(colname)
                 
             table_data[colname] = arr            
             
