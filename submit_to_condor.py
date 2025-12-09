@@ -26,10 +26,14 @@ def submit_to_condor(process, nevents, seed, outdir, simdir, istest):
     script_src.write("fi\n")   
 
     # This is for Delphes downloaded from cvmfs
-    script_src.write(f"apptainer exec --bind {simdir} /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
+    #script_src.write(f"apptainer exec --bind {simdir} /cvmfs/unpacked.cern.ch/registry.hub.docker.com/jmduarte/mapyde:latest sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
     
     # This is for Delphes downloaded from dockerhub (not used unless testing)
-    #script_src.write(f"apptainer exec --bind {simdir} docker://jmduarte/mapyde sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
+    script_src.write(
+    f"apptainer exec --bind {simdir} "
+    "docker://jmduarte/mapyde:latest "
+    f"sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n"
+    )
     #script_src.write(f"apptainer exec --bind {simdir} docker://ericmoreno0/mapyde-delphes:modified sh {simdir}/run.sh {process} {nevents} {seed} {simdir} {istest}\n")
     
 

@@ -1028,7 +1028,7 @@ module Merger PuppiMissingET {
   add InputArray RunPUPPI/PuppiParticles
   #add InputArray EFlowMerger/eflow
   set MomentumOutputArray momentum
-  set UsePUPPI 0
+  set UsePUPPI 1
 }
 
 ###################
@@ -1226,7 +1226,7 @@ module FastJetFinder FastJetFinderPUPPI {
   # algorithm: 1 CDFJetClu, 2 MidPoint, 3 SIScone, 4 kt, 5 Cambridge/Aachen, 6 antikt
   set JetAlgorithm 6
   set ParameterR 0.4
-  set UsePUPPI 0
+  set UsePUPPI 1
 
   set JetPTMin 15.0
 }
@@ -1258,7 +1258,7 @@ module FastJetFinder FastJetFinderPUPPIAK8 {
   set BetaSoftDrop 0.0
   set SymmetryCutSoftDrop 0.1
   set R0SoftDrop 0.8
-  set UsePUPPI 0
+  set UsePUPPI 1
 
   set JetPTMin 200.0
 }
@@ -3194,7 +3194,7 @@ module Merger L1TPuppiMissingET {
   add InputArray L1TRunPUPPI/PuppiParticles
   #add InputArray EFlowMerger/eflow
   set MomentumOutputArray momentum
-  set UsePUPPI 0
+  set UsePUPPI 1
 }
 
 ##################
@@ -3323,7 +3323,7 @@ module FastJetFinder L1TFastJetFinderPUPPI {
   # algorithm: 1 CDFJetClu, 2 MidPoint, 3 SIScone, 4 kt, 5 Cambridge/Aachen, 6 antikt
   set JetAlgorithm 6
   set ParameterR 0.4
-  set UsePUPPI 0
+  set UsePUPPI 1
 
   set JetPTMin 15.0
 }
@@ -3355,7 +3355,7 @@ module FastJetFinder L1TFastJetFinderPUPPIAK8 {
   set BetaSoftDrop 0.0
   set SymmetryCutSoftDrop 0.1
   set R0SoftDrop 0.8
-  set UsePUPPI 0
+  set UsePUPPI 1
 
   set JetPTMin 200.0
 }
