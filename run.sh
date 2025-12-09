@@ -192,29 +192,51 @@ python3  "${simdir}/process_root_parquet.py"  \
          "outdir/event.parquet"
 conv_status=$?
 
+if [ "$conv_status" -ne 0 ]; then
+    echo "Parquet conversion failed with status ${conv_status}"
+    exit 6
+fi
+
+# Now we have: outdir/event.parquet
+LOCAL_PARQUET="outdir/event.parquet"
+
+# where the final production lives
+DEST_DIR="/eos/project/f/foundational-model-dataset/samples/production_final_test/${proc}"
+
+DEST_FILE="${DEST_DIR}/${proc}-NEVENT${nevts}-RS${seed}.parquet"
+
+#mkdir -p "${DEST_DIR}"
+
+echo "Copying ${LOCAL_PARQUET} -> ${DEST_FILE}"
+# cp works since EOS is mounted; swap to xrdcp -f if you prefer
+cp -f "${LOCAL_PARQUET}" "${DEST_FILE}"
+
 # ----------------------------------------------------------------------
 # Validation plots  (always, before deletion)
 # ----------------------------------------------------------------------
 valdir="outdir/validation_plots"
 mkdir -p "${valdir}"
 
-# 3a. Quick one-shot plots (your existing script)
-# python3 "${simdir}/make_plots.py" \
-#         -p outdir/ \
-#         -v "${simdir}/validation_config.yaml"
-ret_plots=$?
+# make validation plots only in test mode
+if [ "$is_test" = "True" ]; then
+    # 3a. Quick one-shot plots (your existing script)
+    python3 "${simdir}/make_plots.py" \
+            -p outdir/ \
+            -v "${simdir}/validation_config.yaml"
+    ret_plots=$?
 
-# 3b. Full validation over *this* ROOT file only
-# python3 "${simdir}/make_validation_plots.py" \
-#         "${final_root}" \
-#         --outdir "${valdir}"
-ret_val_root=$?
+    # 3b. Full validation over *this* ROOT file only
+    python3 "${simdir}/make_validation_plots.py" \
+            "${final_root}" \
+            --outdir "${valdir}"
+    ret_val_root=$?
 
-# 3c. Parquet-based validation (use the Parquet we just wrote)
-# python3 "${simdir}/make_validation_plots_parquet.py" \
-#         "outdir/event.parquet" \
-#         --outdir "${valdir}"
-ret_val_parquet=$?
+    # 3c. Parquet-based validation (use the Parquet we just wrote)
+    python3 "${simdir}/make_validation_plots_parquet.py" \
+            "outdir/event.parquet" \
+            --outdir "${valdir}"
+    ret_val_parquet=$?
+fi
 
 # ----------------------------------------------------------------------
 # Delete ROOT only after successful conversion and validations (not in test)
