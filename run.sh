@@ -201,7 +201,7 @@ fi
 LOCAL_PARQUET="outdir/event.parquet"
 
 # where the final production lives
-DEST_DIR="/eos/project/f/foundational-model-dataset/samples/production_final_test/${proc}"
+DEST_DIR="/eos/project/f/foundational-model-dataset/samples/production_final/${proc}"
 
 DEST_FILE="${DEST_DIR}/${proc}-NEVENT${nevts}-RS${seed}.parquet"
 
