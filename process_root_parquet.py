@@ -57,9 +57,9 @@ SAFE_INT32 = {
 }
 
 # Keep only the N highest‑pT PF candidates **per event** to control file size.
-MAX_PF_PER_EVENT = 200 #128 for L1T 
-PF_COLLECTION_KEYS = ()
-# PF_COLLECTION_KEYS = ("PFCand", "PUPPIPart")  # collections to be trimmed
+MAX_PF_PER_EVENT = 1000 #128 for L1T 
+# PF_COLLECTION_KEYS = ()
+PF_COLLECTION_KEYS = ("PFPart", "PUPPIPart")  # collections to be trimmed
 
 logging.basicConfig(
     format="%(asctime)s — %(levelname)s — %(message)s",
@@ -75,14 +75,8 @@ logging.basicConfig(
 # If you want to add an index mapping, specify "constit_target" with the name
 # of the collection whose fUniqueIDs correspond to the ones in the Constituents array. 
 COLLECTIONS = {
-    #"PFCand": {
-    #    "prefix": "EFlowCHS",
-    #    "vars": [
-    #        "PT", "Eta", "Phi", "PID", "Charge", "Mass",
-    #        "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID",
-    #        "PuppiW", "IsPU"
-    #    ],
-    #},
+
+    # Calorimeter towers and detector (not used unless testing)
     # "EFlowTrack": {
     #     "prefix": "EFlowTrack",
     #     "vars": [
@@ -98,78 +92,139 @@ COLLECTIONS = {
     #     "prefix": "EFlowPhoton",
     #     "vars": ["ET", "Eta", "Phi", "E", "Eem", "Ehad"],
     # }, 
+
+    # PUPPI and PF candidates
     "PUPPIPart": {
         "prefix": "EFlowPuppi",
         "vars": [
-            "PT", "Eta", "Phi", "Charge", "Mass", "PID",
-            "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID", "PuppiW", "IsPU"
+            "PT", "Eta", "Phi", "E", "Charge", "Mass", "PID",
+            "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID", "PuppiW", "IsPU", "IsRecoPU"
         ],
     },
 
+    "PFPart": {
+        "prefix": "EFlow",
+        "vars": [
+            "PT", "Eta", "Phi", "E", "Charge", "Mass", "PID",
+            "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID", "PuppiW", "IsPU", "IsRecoPU"
+        ],
+    },
+
+    # Electrons
     "Electron": {
         "prefix": "Electron",
         "vars": [
             "PT", "Eta", "Phi",
-            "EhadOverEem", "IsolationVarRhoCorr"
+            "Charge",
+            "EhadOverEem",
+            "IsolationVar", "IsolationVarRhoCorr",
+            "D0", "DZ", "ErrorD0", "ErrorDZ"
         ],
-    },
+        },
     # Muons
     # "MuonLoose": {
     #     "prefix": "MuonLoose",
     #     "vars": [
     #         "PT", "Eta", "Phi",
-    #         "IsolationVarRhoCorr"
+    #         "Charge",
+    #         "IsolationVar", "IsolationVarRhoCorr",
+    #         "D0", "DZ", "ErrorD0", "ErrorDZ"
     #     ],
-    # },
+    #     },
     "MuonTight": {
         "prefix": "MuonTight",
         "vars": [
             "PT", "Eta", "Phi",
-            "IsolationVarRhoCorr"
+            "Charge",
+            "IsolationVar", "IsolationVarRhoCorr",
+            "D0", "DZ", "ErrorD0", "ErrorDZ"
         ],
-    },
+        },
     # Photons
     # "PhotonLoose": {
     #     "prefix": "PhotonLoose",
-    #     "vars": ["PT", "Eta", "Phi"],
-    # },
+    #     "vars": [
+    #         "PT", "Eta", "Phi",
+    #         "EhadOverEem",
+    #         "IsolationVar", "IsolationVarRhoCorr"
+    #     ],
+    #     },
     "PhotonTight": {
         "prefix": "PhotonTight",
-        "vars": ["PT", "Eta", "Phi"],
-    },
+        "vars": [
+            "PT", "Eta", "Phi",
+            "EhadOverEem",
+            "IsolationVar", "IsolationVarRhoCorr"
+        ],
+        },
     # Jets
-    #"JetAK4":               {"prefix": "Jet",               "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
-    #"JetAK8":               {"prefix": "JetAK8",            "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"]},
-    #"JetPuppiLoose":          {"prefix": "JetPUPPILoose",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"],
-    #                           "constit_target": "PUPPIPart"},
-    #"JetPuppiTight":          {"prefix": "JetPUPPITight",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"], 
-    #                           "constit_target": "PUPPIPart"},
+    "JetAK4":               {"prefix": "Jet",               "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "NCharged", "NNeutrals", "Charge", "Flavor", "Constituents"],
+                             "constit_target": "PFPart"},
+    "JetAK8":               {"prefix": "JetAK8",            "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "NCharged", "NNeutrals", "Charge", "Flavor", "Constituents"],
+                             "constit_target": "PFPart"},
     
-    "JetPuppiAK4":          {"prefix": "JetPUPPI",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"],
+    "JetPuppiAK4":          {"prefix": "JetPUPPI",          "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "NCharged", "NNeutrals", "Charge", "Flavor", "Constituents"],
                               "constit_target": "PUPPIPart"},
-    "JetPuppiAK8":          {"prefix": "JetPUPPIAK8",       "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "Charge", "Constituents"],
+    "JetPuppiAK8":          {"prefix": "JetPUPPIAK8",       "vars": ["PT", "Eta", "Phi", "Mass", "BTag", "BTagPhys", "NCharged", "NNeutrals", "Charge", "Flavor", "Constituents"],
                               "constit_target": "PUPPIPart"},
     
+    "Rho":                  {"prefix": "Rho",               "vars": ["Rho"]},
+    "ScalarHT":             {"prefix": "ScalarHT",          "vars": ["HT"]  },
+
     # MET
-    "MET":                  {"prefix": "MissingET",         "vars": ["MET", "Phi", "Eta"]},
-    "PUPPIMET":             {"prefix": "PuppiMissingET",    "vars": ["MET", "Phi", "Eta"]},
+    "MET":                  {"prefix": "MissingET",         "vars": ["MET", "Eta", "Phi"]},
+    "PUPPIMET":             {"prefix": "PuppiMissingET",    "vars": ["MET", "Eta", "Phi"]},
     
     "GenMissingET":         { "prefix": "GenMissingET",     "vars": ["MET", "Eta", "Phi"] },
 
     # Gen info
-    "GenPart":              {"prefix": "Particle",          "vars": ["PT", "Eta", "Phi", #"Mass",
+    "GenPart":              {"prefix": "Particle",          "vars": ["PT", "Eta", "Phi", "Mass",
                                                                      "PID", "M1", "M2", "D1", "D2",
                                                                      "Status", "IsPU",]},# "X", "Y", "Z", "T"]},
     "GenJetAK4":            {"prefix": "GenJet",            "vars": ["PT", "Eta", "Phi", "Mass"]},
     "GenJetAK8":            {"prefix": "GenJetAK8",         "vars": ["PT", "Eta", "Phi", "Mass"]},
     # Vertices
-    "PrimaryVertex":        {"prefix": "Vertex",            "vars": ["X", "Y", "Z", "T", "SumPT2"
-                                                                     # Not found
-                                                                     # "Chi2", "Status",
-                                                                    ]},
-    # Not found
-    # "SecondaryVertex":      {"prefix": "SecondaryVertex",   "vars": ["X", "Y", "Z", "NDF", "Chi2"]},
-}
+    "Vertex": {
+        "prefix": "Vertex",
+        "vars": [
+            "X", "Y", "Z", "T",
+            "Index", "NDF", 
+            "SumPT2",
+            "Constituents"  
+    ],
+    },
+
+    "EventInfo": {
+        "prefix": "Event",
+        "vars": [
+            # Per-file event index
+            "Number",             
+
+            # Generator process info
+            "ProcessID",          
+
+            # Weights and xsec
+            "Weight",            
+            "CrossSection",      
+            "CrossSectionError", 
+
+            # Scales and couplings
+            "Scale",             
+            "AlphaQED",         
+            "AlphaQCD",         
+
+            # PDF info
+            "ID1",      
+            "ID2",             
+            "X1",            
+            "X2",      
+            "ScalePDF",        
+            "PDF1",          
+            "PDF2",            
+        ],
+},
+
+}   
 
 # Add any mapping of branch names that differ between FullReco and L1T trees if
 # they are not simply the same with a different prefix.
@@ -189,14 +244,26 @@ L1T_RENAME = {
 
 
 def branch(tree, br_name):
-    """Return awkward array if branch exists, else None."""
+    """Return awkward array if branch exists, else None.
+    If reading fails (e.g. object-dtype branches that Awkward can't handle),
+    log and return None so the caller can safely skip this variable.
+    """
     try:
         ret = tree[br_name].array(library="ak")
         # logging.warning("Branch %s found.", br_name)
         return ret
-        
+
     except KeyError:
         logging.warning("Branch %s not found, skipping.", br_name)
+        return None
+
+    except Exception as exc:
+        # Catch TypeError from Awkward (object dtype) and any other unexpected read errors
+        logging.warning(
+            "Branch %s could not be read as an Awkward array (%s); skipping this branch.",
+            br_name,
+            exc,
+        )
         return None
 
 def sort_collection(jagged_arrays, sort_key):
@@ -320,7 +387,7 @@ def write_collection(tree, table_data, l1t=False):
         # ---------------------------------------------------------------
         # Choose sort variable for this collection and sort
         # ---------------------------------------------------------------
-        if coll_key == "PrimaryVertex":
+        if coll_key == "Vertex":
             sort_var = "SumPT2"
         else:
             sort_var = "PT"
@@ -384,8 +451,12 @@ def write_collection(tree, table_data, l1t=False):
                 print(colname)
             
             #make separate collection also for vertex
-            elif coll_key.startswith("PrimaryVertex"):
-                colname = f"PrimaryVertex_{var}" 
+            elif coll_key.startswith("Vertex"):
+                colname = f"Vertex_{var}" 
+                print(colname)
+            
+            elif coll_key.startswith("EventInfo"):
+                colname = f"Event_{var}"
                 print(colname)
             else:
                 colname = f"{tag}_{coll_key}_{var}"
