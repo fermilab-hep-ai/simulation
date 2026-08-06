@@ -1,0 +1,8 @@
+import model RPVMSSM_UFO
+
+define sq = ur ul cr cl dr dl sr sl
+define sq~ = ur~ ul~ cr~ cl~ dr~ dl~ sr~ sl~
+
+generate p p > sq sq~
+
+output _OUTDIR_

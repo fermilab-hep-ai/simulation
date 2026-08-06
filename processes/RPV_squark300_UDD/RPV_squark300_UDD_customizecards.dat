@@ -1,0 +1,69 @@
+# AIDA-Scout S5: compressed light-squark RPV UDD spectrum.
+# Right-handed up/charm/down/strange squarks degenerate at 300 GeV; everything
+# else decoupled so that p p > sq sq~ dominates and each squark decays via the
+# lambda'' UDD operator into two light quarks.
+set param_card mass 1000001 300
+set param_card mass 1000002 300
+set param_card mass 1000003 300
+set param_card mass 1000004 300
+set param_card mass 2000001 300
+set param_card mass 2000002 300
+set param_card mass 2000003 300
+set param_card mass 2000004 300
+
+# Third generation squarks and the gluino out of reach.
+set param_card mass 1000005 500
+set param_card mass 1000006 500
+set param_card mass 2000005 500
+set param_card mass 2000006 500
+set param_card mass 1000021 500
+
+# Gauginos decoupled ABOVE the squark.  This is essential, not cosmetic: with
+# the UFO defaults the neutralino sits near 100 GeV and the squarks decay
+# predominantly to q + neutralino/chargino, which produces exactly the MET that
+# S5 is supposed not to have (measured before this was set: BR(dl -> b n2) = 1.0,
+# BR(ul -> b x1+) = 0.26).  Pushing them above the squark closes those channels
+# and leaves only the RPV UDD decay open.
+set param_card mass 1000022 500
+set param_card mass 1000023 500
+set param_card mass 1000024 500
+set param_card mass 1000025 500
+set param_card mass 1000035 500
+set param_card mass 1000037 500
+
+# lambda'' UDD couplings, block RVLAMUDD, indices ijk of lambda''_ijk U_i D_j D_k
+# (antisymmetric in the last two).
+#
+# The UFO ships **0.2 on every entry**, which is not a harmless default: leaving
+# it in place opens decays into the third generation, and a 300 GeV squark then
+# decays to a top (measured: modes -3 -6 and -5 -6 on the 2000001 squark). S5
+# calls for decays to *light* quarks, so every entry is zeroed first and only
+# lambda''_112 (u d s -- the sole combination with all indices in the first two
+# generations) is switched back on.
+set param_card rvlamudd 1 1 3 0.0
+set param_card rvlamudd 1 2 3 0.0
+set param_card rvlamudd 1 3 1 0.0
+set param_card rvlamudd 1 3 2 0.0
+set param_card rvlamudd 2 1 2 0.0
+set param_card rvlamudd 2 1 3 0.0
+set param_card rvlamudd 2 2 1 0.0
+set param_card rvlamudd 2 2 3 0.0
+set param_card rvlamudd 2 3 1 0.0
+set param_card rvlamudd 2 3 2 0.0
+set param_card rvlamudd 3 1 2 0.0
+set param_card rvlamudd 3 1 3 0.0
+set param_card rvlamudd 3 2 1 0.0
+set param_card rvlamudd 3 2 3 0.0
+set param_card rvlamudd 3 3 1 0.0
+set param_card rvlamudd 3 3 2 0.0
+
+# The only surviving coupling: u d s.  1e-2 keeps the decay prompt on detector
+# scales while leaving the squark narrow.
+set param_card rvlamudd 1 1 2 1.0e-2
+set param_card rvlamudd 1 2 1 -1.0e-2
+
+# Recompute the squark widths so the RPV UDD channel is present in the decay
+# table that gets written into the LHE header and handed to Pythia.  Without
+# this the squarks inherit the UFO's default table and may not decay to
+# two quarks at all.
+compute_widths 1000001 1000002 1000003 1000004 2000001 2000002 2000003 2000004
