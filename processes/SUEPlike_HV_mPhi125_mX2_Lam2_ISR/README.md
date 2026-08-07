@@ -46,11 +46,12 @@ Consequences:
 * The 1.6% leading-jet estimate in specification section 3 (gap 1) assumes
   uniform energy distribution and **does not apply to these events**. Expect
   more energy in the leading jet than a true SUEP would give.
-* **Control C4 (anisotropy control) is degenerate with the nominal point under
-  this approximation** and cannot be built from it. C4 requires a genuine
-  isotropy knob, i.e. a real thermal shower. It is the control the
-  specification flags as "most likely to change how we interpret results", so
-  this is a real gap in the deliverable.
+* **Control C4 (anisotropy control) has been dropped by decision.** It is
+  degenerate with the nominal point under this approximation and cannot be built
+  from it: C4 requires a genuine isotropy knob, i.e. a real thermal shower.
+  The specification flags C4 as the control "most likely to change how we
+  interpret results", so if a thermal shower is ever integrated, C4 is the first
+  thing to add back.
 
 To do this properly, integrate the Knapen/Griso/Papucci thermal shower (or the
 CMS-adopted equivalent) as a Pythia8 UserHook in `main_signal.cc`; the

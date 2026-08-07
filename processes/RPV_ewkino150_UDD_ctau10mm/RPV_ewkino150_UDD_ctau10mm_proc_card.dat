@@ -1,0 +1,16 @@
+import model RPVMSSM_UFO
+
+# Displaced light Higgsino multiplet, below the top threshold.
+#
+# lambda''_223 (c s b) rather than _323 (t s b): at m < m_top the t s b mode is
+# closed, and the c s b mode runs off the charm Yukawa, which is small enough
+# that the Higgsino is naturally long-lived.  Three jets per state, two of them
+# heavy-flavour, all emerging from a displaced vertex.
+
+define q2 = c c~ s s~ b b~
+
+generate    p p > n1 x1+, (n1 > q2 q2 q2), (x1+ > q2 q2 q2)
+add process p p > n1 x1-, (n1 > q2 q2 q2), (x1- > q2 q2 q2)
+add process p p > x1+ x1-, (x1+ > q2 q2 q2), (x1- > q2 q2 q2)
+
+output _OUTDIR_

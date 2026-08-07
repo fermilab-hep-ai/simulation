@@ -9,11 +9,11 @@ This point is one half of the matched ee/mumu pair: its partner is `HVdilep_Zp10
 ## Configuration
 
 * Hard process: `HiddenValley:ffbar2Zv`, m_Zp = 1000 GeV
-* Lambda = 2 GeV, pTminFSR = 2.2 GeV, Ngauge = 3, nFlav = 2, probVector = 0.75
+* Shower: `alphaOrder = 1`, `pTminFSR = 1.1 x Lambda` (specification default)
+* Lambda = 2 GeV, Ngauge = 3, nFlav = 2, probVector = 0.75
 * m_piD = 2 GeV, m_rhoD = 4 GeV, m_qv = 2 GeV
 * Dark meson decays: 100% -> mu+mu-
 * Cross section: **0.3397 pb** (Pythia LO, no k-factor)
-* Expected multiplicity: ~11 leptons/event at the Zp500/piD2 point (measured)
 
 ## Why it evades (or does not evade) the Phase-2 L1 menu
 

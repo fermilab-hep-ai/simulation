@@ -1,0 +1,27 @@
+import model RPVMSSM_UFO
+
+# Light Higgsino multiplet with RPV UDD decays through the THIRD generation.
+#
+# lambda''_323 (t s b) is the right operator for a Higgsino: the chi-t-stop
+# vertex goes through the TOP Yukawa, which is large, so the decay is prompt and
+# unsuppressed.  lambda''_112 would not work here -- a pure Higgsino couples to a
+# quark and a squark through that quark's Yukawa, so decays to light quarks are
+# Yukawa-suppressed to the point of being non-prompt.  Allowing heavy flavour is
+# what makes a genuine pure-Higgsino benchmark possible.
+#
+# It also buys jet multiplicity: n1 > t s b with a hadronic top gives FIVE jets
+# per neutralino rather than three, so the pair lands at 8-10 jets instead of 6.
+#
+# The top is left undecayed in the matrix element and handed to Pythia -- its
+# width is large and standard, so it has none of the RPV width problems.  The
+# electroweakino decays stay in the matrix element for the usual reason: their
+# lambda'' widths are far below the QCD scale and MG5's compute_widths would
+# zero them, leaving the LSP stable.
+
+define q3 = t t~ b b~ s s~
+
+generate    p p > n1 x1+, (n1 > q3 q3 q3), (x1+ > q3 q3 q3)
+add process p p > n1 x1-, (n1 > q3 q3 q3), (x1- > q3 q3 q3)
+add process p p > x1+ x1-, (x1+ > q3 q3 q3), (x1- > q3 q3 q3)
+
+output _OUTDIR_

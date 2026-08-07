@@ -1,0 +1,62 @@
+# AIDA-Scout S5c: displaced RPV Higgsino at 150 GeV, ctau = 10 mm.
+#
+# Below the top threshold lambda''_323 (t s b) is closed, so this point uses
+# lambda''_223 (c s b), which runs off the charm Yukawa and is naturally
+# long-lived.  The width below is set to hit the target ctau via
+#     ctau[mm] = 1.973e-13 / Gamma[GeV]
+# and the run card sets time_of_flight = 0 so MG5 writes the lifetime into the
+# LHE.  To scan the lifetime, change ONLY the 1000022 width -- the process
+# directory does not need regenerating.
+
+# The near-degenerate multiplet, below the top threshold.
+set param_card mass 1000022 150
+set param_card mass 1000023 151
+set param_card mass 1000024 151
+
+# Everything else decoupled.
+set param_card mass 1000025 1000
+set param_card mass 1000035 1000
+set param_card mass 1000037 1000
+set param_card mass 1000021 1000
+set param_card mass 1000001 1000
+set param_card mass 1000002 1000
+set param_card mass 1000003 1000
+set param_card mass 1000004 1000
+set param_card mass 1000005 1000
+set param_card mass 1000006 1000
+set param_card mass 2000001 1000
+set param_card mass 2000002 1000
+set param_card mass 2000003 1000
+set param_card mass 2000004 1000
+set param_card mass 2000005 1000
+set param_card mass 2000006 1000
+
+# lambda''_223 (c s b) only.  The UFO ships 0.2 on every RVLAMUDD entry, so all
+# the others are zeroed or the light-flavour and top modes reopen.
+set param_card rvlamudd 1 1 2 0.0
+set param_card rvlamudd 1 1 3 0.0
+set param_card rvlamudd 1 2 1 0.0
+set param_card rvlamudd 1 2 3 0.0
+set param_card rvlamudd 1 3 1 0.0
+set param_card rvlamudd 1 3 2 0.0
+set param_card rvlamudd 2 1 2 0.0
+set param_card rvlamudd 2 1 3 0.0
+set param_card rvlamudd 2 2 1 0.0
+set param_card rvlamudd 2 3 1 0.0
+set param_card rvlamudd 2 3 2 0.0
+set param_card rvlamudd 3 1 2 0.0
+set param_card rvlamudd 3 1 3 0.0
+set param_card rvlamudd 3 2 1 0.0
+set param_card rvlamudd 3 2 3 0.0
+set param_card rvlamudd 3 3 1 0.0
+set param_card rvlamudd 3 3 2 0.0
+
+# The surviving coupling and its antisymmetric partner.
+set param_card rvlamudd 2 2 3 1.0e-2
+set param_card rvlamudd 2 3 2 -1.0e-2
+
+# ctau = 10 mm.  This width is what sets the displacement; it also makes the
+# cross section MG5 reports meaningless, as for every other decay-chain point.
+set param_card decay 1000022 1.9730e-14
+set param_card decay 1000023 1.9730e-14
+set param_card decay 1000024 1.9730e-14

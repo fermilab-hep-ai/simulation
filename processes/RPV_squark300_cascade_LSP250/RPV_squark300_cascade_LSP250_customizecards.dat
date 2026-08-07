@@ -1,0 +1,51 @@
+# AIDA-Scout S5 cascade: m_squark = 300 GeV, m_LSP = 250 GeV.
+# Compressed by 50 GeV so the quark from squark -> quark + LSP stays soft.
+set param_card mass 1000001 300
+set param_card mass 1000002 300
+set param_card mass 1000003 300
+set param_card mass 1000004 300
+set param_card mass 2000001 300
+set param_card mass 2000002 300
+set param_card mass 2000003 300
+set param_card mass 2000004 300
+
+# Third generation, gluino and the heavier gauginos decoupled.
+set param_card mass 1000005 700
+set param_card mass 1000006 700
+set param_card mass 2000005 700
+set param_card mass 2000006 700
+set param_card mass 1000021 700
+set param_card mass 1000023 700
+set param_card mass 1000024 700
+set param_card mass 1000025 700
+set param_card mass 1000035 700
+set param_card mass 1000037 700
+
+# The LSP.
+set param_card mass 1000022 250
+
+# lambda''_112 only -- decays to light quarks, no third generation.  The UFO
+# ships 0.2 on every RVLAMUDD entry; the others are irrelevant here because the
+# matrix element only contains the 112 vertex, but the value still sets the
+# overall normalisation of the LSP decay.
+set param_card rvlamudd 1 1 2 1.0e-2
+set param_card rvlamudd 1 2 1 -1.0e-2
+
+# Explicit non-zero widths, required or MG5 cannot build the propagator in the
+# decay chain.
+#
+# WARNING -- THESE INVALIDATE THE CROSS SECTION MG5 REPORTS.  For a decay chain
+# MG5 forms sigma = sigma_production x Gamma_partial / Gamma_total, so supplying
+# Gamma_total by hand makes the reported number arbitrary.  Measured symptom:
+# the quoted cross section is NOT monotonic in the squark mass (13.42 pb at
+# m = 150 against 0.0998 pb at m = 120), which is backwards for production and is
+# the artifact, not physics.
+#
+# Normalise instead as
+#     sigma_sample = sigma(p p > ur ur~) x BR(cascade)
+# with BR(cascade) = 1 to a good approximation here: only lambda''_112 is on and
+# the LSP sits below the squark, so the cascade is effectively the only channel.
+# Generate 'p p > ur ur~' on its own to get the production cross section.
+set param_card decay 1000002 1.5
+set param_card decay 2000002 1.5
+set param_card decay 1000022 0.1

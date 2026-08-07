@@ -49,10 +49,10 @@ HiggsSM:gg2H = on
 HiddenValley:fragment   = on
 HiddenValley:FSR        = on
 HiddenValley:alphaOrder = 1
-HiddenValley:Ngauge     = 3
-HiddenValley:nFlav      = 2
 HiddenValley:Lambda     = 2
 HiddenValley:pTminFSR   = 2.2
+HiddenValley:Ngauge     = 3
+HiddenValley:nFlav      = 2
 HiddenValley:probVector = 0.75
 
 ! ---- Dark sector spectrum ----

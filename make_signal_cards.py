@@ -60,19 +60,40 @@ Next:numberShowEvent = 0
 """
 
 
-def hv_block(lam, ngauge=3, nflav=2, prob_vector=0.75):
-    """Hidden Valley shower + hadronisation settings (spec section S2)."""
+def hv_block(lam, ngauge=3, nflav=2, prob_vector=0.75, alpha_fsr=None):
+    """
+    Hidden Valley shower + hadronisation settings (spec section S2).
+
+    alpha_fsr = None reproduces the specification fragment exactly: running
+    coupling (alphaOrder = 1) with the shower cutoff tied to Lambda.
+
+    alpha_fsr = <value> switches to a fixed, strong hidden-sector coupling and
+    decouples the cutoff from Lambda.  This is the high-multiplicity
+    configuration: with alphaOrder = 1 the cutoff pTminFSR = 1.1 x Lambda sits
+    exactly where the running coupling becomes large, so almost no hidden-sector
+    radiation is generated and the dark meson multiplicity is insensitive to
+    Lambda (measured: 4.0 -> 5.8 mesons/event across Lambda = 0.5 - 2 GeV).
+    Fixing alphaFSR near 1 and dropping the cutoff to 0.5 GeV raises it to
+    ~17 mesons and softens the leptons correspondingly.
+    """
+    if alpha_fsr is None:
+        alpha_lines = """HiddenValley:alphaOrder = 1
+HiddenValley:Lambda     = {lam:g}
+HiddenValley:pTminFSR   = {ptmin:g}""".format(lam=lam, ptmin=1.1 * lam)
+    else:
+        alpha_lines = """HiddenValley:alphaOrder = 0
+HiddenValley:alphaFSR   = {a:g}
+HiddenValley:Lambda     = {lam:g}
+HiddenValley:pTminFSR   = 0.5""".format(a=alpha_fsr, lam=lam)
     return """
 ! ---- Hidden Valley shower and hadronisation ----
 HiddenValley:fragment   = on
 HiddenValley:FSR        = on
-HiddenValley:alphaOrder = 1
+{alpha}
 HiddenValley:Ngauge     = {ngauge}
 HiddenValley:nFlav      = {nflav}
-HiddenValley:Lambda     = {lam:g}
-HiddenValley:pTminFSR   = {ptmin:g}
 HiddenValley:probVector = {pv:g}
-""".format(ngauge=ngauge, nflav=nflav, lam=lam, ptmin=1.1 * lam, pv=prob_vector)
+""".format(alpha=alpha_lines, ngauge=ngauge, nflav=nflav, pv=prob_vector)
 
 
 def hv_spectrum(m_pi, m_qv=None, m_rho=None):
@@ -203,20 +224,33 @@ LEPTON = {
 }
 
 
+# m_Zp = 200 is the primary point: it is the only place in the scan where the
+# leptons are soft enough for the ee sample to plausibly sit under the
+# DoubleTkElectron 25,12 floor.  It also carries the strong-coupling shower
+# configuration, for the same reason.  500 and 1000 are kept on the
+# specification's own shower settings as spec-faithful reference points.
+S2_ALPHA_FSR = {200: 1.0, 500: None, 1000: None}
+
+
 def s2_points():
     """S2: dark shower -> soft dileptons, matched ee / mumu pairs."""
     out = []
-    for mzp in (500, 1000):
+    for mzp in (200, 500, 1000):
+        afsr = S2_ALPHA_FSR[mzp]
         for mpi in (2, 5):
             for flav in ("ee", "mumu"):
                 name = "HVdilep_Zp{0}_piD{1}_{2}".format(mzp, mpi, flav)
                 products, comment = LEPTON[flav]
+                shower = ("alphaFSR = {0:g} (fixed, strong coupling)".format(afsr)
+                          if afsr is not None else
+                          "alphaOrder = 1, pTminFSR = 1.1 x Lambda (spec default)")
                 body = (
                     HEADER.format(
                         title="S2 -- Hidden Valley dark shower to soft dileptons ({0})".format(flav),
-                        subtitle="m_Zp = {0} GeV, m_piD = {1} GeV, Lambda = {1} GeV".format(mzp, mpi))
+                        subtitle="m_Zp = {0} GeV, m_piD = {1} GeV, Lambda = {1} GeV, {2}".format(
+                            mzp, mpi, shower))
                     + zv_block(mzp)
-                    + hv_block(lam=float(mpi))
+                    + hv_block(lam=float(mpi), alpha_fsr=afsr)
                     + hv_spectrum(float(mpi))
                     + hv_decays(products, comment)
                 )
@@ -287,17 +321,57 @@ def s1_points():
     return out
 
 
-def s4_points():
-    """S4: h -> a a -> 4 tau."""
-    out = []
-    for ma in (5, 10, 15):
-        name = "hToAA_4tau_ma{0}".format(ma)
-        body = (
-            HEADER.format(
-                title="S4 -- h -> a a -> 4 tau",
-                subtitle="m_h = 125 GeV, m_a = {0} GeV, a -> tau+ tau- at 100%".format(ma))
-            + """
-! ---- Hard process: gg -> h, h -> a a, a -> tau tau ----
+# h -> a a decay modes.  Each entry is (products, short label, description).
+HAA_MODES = {
+    "4b":     ("5 -5",   "b bbar",     "a -> b bbar"),
+    "4tau":   ("15 -15", "tau+ tau-",  "a -> tau+ tau-"),
+    "4gamma": ("22 22",  "gamma gamma", "a -> gamma gamma"),
+}
+
+# (mode, masses, primary mass used for the lifetime scan or None for prompt only)
+HAA_POINTS = [
+    # m_a must clear 2 m_b ~ 9.4 GeV for the 4b mode.
+    ("4b",     (15, 30, 60), 30),
+    ("4tau",   (5, 10, 15),  10),
+    # a -> gamma gamma stays open at any mass; very light a gives a collimated
+    # photon pair that reconstructs as a single EM object.
+    ("4gamma", (1, 5, 10),   None),
+]
+
+HAA_CTAUS = (1, 10, 100)
+
+
+def haa_card(mode, ma, ctau_mm=None):
+    products, _, desc = HAA_MODES[mode]
+    if ctau_mm is None:
+        life = ("36:mWidth = 0.001\n36:doForceWidth = on\n36:tau0   = 0.\n", "prompt")
+    else:
+        # The lifetime MUST be set through the width.  36 is a resonance and
+        # doForceWidth is on, so Pythia derives tau0 = hbar / Gamma at
+        # initialisation and silently overwrites any tau0 set by hand -- setting
+        # '36:tau0' alone produces a sample that is prompt despite asking for a
+        # displacement.  Setting Gamma = hbar*c / ctau makes the two consistent;
+        # tau0 is set as well so the card is self-documenting.
+        width = CTAU_MM_TO_WIDTH / ctau_mm
+        life = (
+            "! Proper lifetime, ctau = {c:g} mm, imposed through the WIDTH:\n"
+            "!     Gamma[GeV] = hbar*c / ctau[mm] = 1.973e-13 / ctau\n"
+            "! Setting 36:tau0 on its own does NOT work -- 36 is a resonance with\n"
+            "! doForceWidth on, so Pythia recomputes tau0 from mWidth at init.\n"
+            "! limitTau0 must also be off, or Pythia refuses to decay anything with\n"
+            "! tau0 above its default 10 mm ceiling and the a becomes invisible.\n"
+            "ParticleDecays:limitTau0 = off\n"
+            "36:mWidth = {w:.4e}\n"
+            "36:doForceWidth = on\n"
+            "36:tau0   = {c:g}\n".format(c=ctau_mm, w=width),
+            "ctau = {0:g} mm".format(ctau_mm),
+        )
+    return (
+        HEADER.format(
+            title="h -> a a -> {0} ({1})".format(mode, desc),
+            subtitle="m_h = 125 GeV, m_a = {0} GeV, {1}, {2}".format(ma, desc, life[1]))
+        + """
+! ---- Hard process: gg -> h, h -> a a ----
 ! Handled entirely in Pythia's decay tables, so no 2HDM+S UFO is needed.
 ! meMode 100 is required: both 25 and 36 are resonances, and for a resonance a
 ! branching ratio cannot be overridden without meMode >= 100.
@@ -316,17 +390,27 @@ HiggsSM:gg2H = on
 25:onIfMatch = 36 36
 
 36:m0     = {ma:g}
-36:mWidth = 0.001
 36:mMin   = {mmin:g}
 36:mMax   = {mmax:g}
-36:doForceWidth = on
-36:tau0   = 0.
-36:addChannel = 1 1.0 100 15 -15
+{life}36:addChannel = 1 1.0 100 {prod}
 36:onMode = off
-36:onIfMatch = 15 -15
-""".format(ma=float(ma), mmin=0.5 * ma, mmax=1.5 * ma)
-        )
-        out.append((name, body))
+36:onIfMatch = {prod}
+""".format(ma=float(ma), mmin=0.5 * ma, mmax=1.5 * ma,
+           life=life[0], prod=products)
+    )
+
+
+def s4_points():
+    """h -> a a with a -> bb / tautau / gammagamma, prompt and displaced."""
+    out = []
+    for mode, masses, primary in HAA_POINTS:
+        for ma in masses:
+            out.append(("hToAA_{0}_ma{1}".format(mode, ma), haa_card(mode, ma)))
+        if primary is not None:
+            for ctau in HAA_CTAUS:
+                out.append((
+                    "hToAA_{0}_ma{1}_ctau{2}mm".format(mode, primary, ctau),
+                    haa_card(mode, primary, ctau_mm=ctau)))
     return out
 
 
@@ -371,7 +455,7 @@ output _OUTDIR_
 """
 
 
-def rpv_run_card(nevents_placeholder="_NEVENTS_"):
+def rpv_run_card(nevents_placeholder="_NEVENTS_", time_of_flight="-1.0"):
     """
     Run card with every pT / dR / mass cut zeroed and MLM matching OFF.
 
@@ -402,7 +486,7 @@ def rpv_run_card(nevents_placeholder="_NEVENTS_"):
  -1 = dynamical_scale_choice ! Choose one of the preselected dynamical choices
  1.0  = scalefact        ! scale factor for event-by-event scales
   False     = gridpack  !True = setting up the grid pack
-  -1.0 = time_of_flight ! threshold (in mm) below which the invariant livetime is not written
+  {tof} = time_of_flight ! threshold (in mm) below which the invariant livetime is not written
   3.0 = lhe_version       ! Change the way clustering information pass to shower.
   True = clusinfo         ! include clustering tag in output
   average =  event_norm       ! average/sum. Normalization of the weight in the LHEF
@@ -529,7 +613,7 @@ def rpv_run_card(nevents_placeholder="_NEVENTS_"):
  1, 2, 3, 4, 5, 6, 21  =  pdgs_for_merging_cut ! PDGs for two cuts above
  5 = maxjetflavor    ! Maximum jet pdg code
    True  = use_syst      ! Enable systematics studies
-""".format(nev=nevents_placeholder)
+""".format(nev=nevents_placeholder, tof=time_of_flight)
 
 
 def rpv_customize(m_squark):
@@ -624,6 +708,349 @@ def rpv_points():
 
 
 # ---------------------------------------------------------------------------
+# S5 cascade variant: squark -> quark + LSP, LSP -> three light quarks.
+#
+# The direct two-body RPV decay above gives only 4 jets.  The specification asks
+# for 8-12 jets of 10-30 GeV, which needs one more step in the chain.
+#
+# Two hard constraints shape the mass points, both physical rather than
+# technical:
+#
+#   1. RPV has no invisible particle, so the *entire* parent mass is converted
+#      into visible jets: HT_true = 2 x m_squark.  For N jets of average energy
+#      E that fixes 2 x m_squark = N x E.  N = 10 jets at 20-30 GeV therefore
+#      requires m_squark ~ 100-150 GeV -- the specification's 300/600 GeV cannot
+#      produce 10-30 GeV jets under any topology.
+#   2. The quark from squark -> quark + LSP is hard unless the spectrum is
+#      compressed, so m_LSP must sit close under m_squark.
+#
+# The cascade is put in the MATRIX ELEMENT rather than in decay tables.  MG5's
+# compute_widths zeroes every partial width below the QCD scale (~0.2 GeV), and
+# a light RPV LSP decaying through lambda'' = 1e-2 is far below that -- the LSP
+# came back with width exactly 0, i.e. stable.  Letting Pythia recompute the
+# widths instead failed differently (invalid particle codes out of the RPV
+# machinery on this UFO).  Generating the decays in the matrix element sidesteps
+# both: the LHE is already fully decayed and no decay table is consulted.
+RPV_CASCADE_PROC_CARD = """import model RPVMSSM_UFO
+
+# Squark pair with the full cascade in the matrix element:
+#   ur     -> u  + n1,  n1 -> u  d  s     (lambda''_112 UDD)
+#   ur~    -> u~ + n1,  n1 -> u~ d~ s~
+# Eight partons at the hard-process level.  Restricted to the right-handed up
+# squark, the only flavour lambda''_112 couples to; see the point README for why
+# the decays are here rather than in the decay table.
+
+generate p p > ur ur~, (ur > u n1, n1 > u d s), (ur~ > u~ n1, n1 > u~ d~ s~)
+
+output _OUTDIR_
+"""
+
+
+def rpv_cascade_customize(m_squark, m_lsp):
+    heavy = m_squark + 400.0
+    return """# AIDA-Scout S5 cascade: m_squark = {m:g} GeV, m_LSP = {y:g} GeV.
+# Compressed by {d:g} GeV so the quark from squark -> quark + LSP stays soft.
+set param_card mass 1000001 {m:g}
+set param_card mass 1000002 {m:g}
+set param_card mass 1000003 {m:g}
+set param_card mass 1000004 {m:g}
+set param_card mass 2000001 {m:g}
+set param_card mass 2000002 {m:g}
+set param_card mass 2000003 {m:g}
+set param_card mass 2000004 {m:g}
+
+# Third generation, gluino and the heavier gauginos decoupled.
+set param_card mass 1000005 {h:g}
+set param_card mass 1000006 {h:g}
+set param_card mass 2000005 {h:g}
+set param_card mass 2000006 {h:g}
+set param_card mass 1000021 {h:g}
+set param_card mass 1000023 {h:g}
+set param_card mass 1000024 {h:g}
+set param_card mass 1000025 {h:g}
+set param_card mass 1000035 {h:g}
+set param_card mass 1000037 {h:g}
+
+# The LSP.
+set param_card mass 1000022 {y:g}
+
+# lambda''_112 only -- decays to light quarks, no third generation.  The UFO
+# ships 0.2 on every RVLAMUDD entry; the others are irrelevant here because the
+# matrix element only contains the 112 vertex, but the value still sets the
+# overall normalisation of the LSP decay.
+set param_card rvlamudd 1 1 2 1.0e-2
+set param_card rvlamudd 1 2 1 -1.0e-2
+
+# Explicit non-zero widths, required or MG5 cannot build the propagator in the
+# decay chain.
+#
+# WARNING -- THESE INVALIDATE THE CROSS SECTION MG5 REPORTS.  For a decay chain
+# MG5 forms sigma = sigma_production x Gamma_partial / Gamma_total, so supplying
+# Gamma_total by hand makes the reported number arbitrary.  Measured symptom:
+# the quoted cross section is NOT monotonic in the squark mass (13.42 pb at
+# m = 150 against 0.0998 pb at m = 120), which is backwards for production and is
+# the artifact, not physics.
+#
+# Normalise instead as
+#     sigma_sample = sigma(p p > ur ur~) x BR(cascade)
+# with BR(cascade) = 1 to a good approximation here: only lambda''_112 is on and
+# the LSP sits below the squark, so the cascade is effectively the only channel.
+# Generate 'p p > ur ur~' on its own to get the production cross section.
+set param_card decay 1000002 1.5
+set param_card decay 2000002 1.5
+set param_card decay 1000022 0.1
+""".format(m=m_squark, y=m_lsp, d=m_squark - m_lsp, h=heavy)
+
+
+def rpv_cascade_points():
+    """(m_squark, m_LSP): the specification's masses plus the light points that
+    can actually reach 8-12 jets of 10-30 GeV."""
+    return [(300.0, 250.0), (600.0, 550.0), (150.0, 100.0), (120.0, 90.0)]
+
+
+# ---------------------------------------------------------------------------
+# S5b: RPV electroweakinos -- the non-excluded companion to the light squark.
+#
+# The 150 GeV squark point above reproduces the target signature but is ruled out
+# by existing LHC searches.  A light electroweakino multiplet is not: it is
+# produced electroweakly, so the cross section is O(pb) rather than the ~1600 pb
+# of 150 GeV squarks, and the RPV multijet searches that exclude light squarks
+# are driven by strong production and have very little reach against it.  LEP
+# sets m_chargino >~ 92-103 GeV, which is the binding constraint.
+#
+# Topology: each electroweakino decays to three quarks through lambda'', so pair
+# production gives SIX jets rather than the squark cascade's eight.  Fewer jets,
+# but the jet energies land better -- at m = 150 GeV the six jets average ~25 GeV
+# and therefore sit mostly BELOW the 30 GeV HT-constituent threshold, so the menu
+# HT is close to zero by construction.
+RPV_EWKINO_PROC_CARD = """import model RPVMSSM_UFO
+
+# Light Higgsino multiplet with RPV UDD decays through the THIRD generation.
+#
+# lambda''_323 (t s b) is the right operator for a Higgsino: the chi-t-stop
+# vertex goes through the TOP Yukawa, which is large, so the decay is prompt and
+# unsuppressed.  lambda''_112 would not work here -- a pure Higgsino couples to a
+# quark and a squark through that quark's Yukawa, so decays to light quarks are
+# Yukawa-suppressed to the point of being non-prompt.  Allowing heavy flavour is
+# what makes a genuine pure-Higgsino benchmark possible.
+#
+# It also buys jet multiplicity: n1 > t s b with a hadronic top gives FIVE jets
+# per neutralino rather than three, so the pair lands at 8-10 jets instead of 6.
+#
+# The top is left undecayed in the matrix element and handed to Pythia -- its
+# width is large and standard, so it has none of the RPV width problems.  The
+# electroweakino decays stay in the matrix element for the usual reason: their
+# lambda'' widths are far below the QCD scale and MG5's compute_widths would
+# zero them, leaving the LSP stable.
+
+define q3 = t t~ b b~ s s~
+
+generate    p p > n1 x1+, (n1 > q3 q3 q3), (x1+ > q3 q3 q3)
+add process p p > n1 x1-, (n1 > q3 q3 q3), (x1- > q3 q3 q3)
+add process p p > x1+ x1-, (x1+ > q3 q3 q3), (x1- > q3 q3 q3)
+
+output _OUTDIR_
+"""
+
+
+def rpv_ewkino_customize(m_ewkino):
+    """
+    Near-degenerate Higgsino multiplet at m_ewkino, everything else heavy,
+    decaying through lambda''_323 (t s b).
+
+    Mass points are chosen so the top is on shell: m >= ~180 GeV.  Below that the
+    t s b mode closes and the decay becomes four-body through an off-shell top,
+    which is strongly suppressed and gives a long-lived Higgsino -- a displaced
+    multijet signature rather than a prompt one.  That is a legitimate signal in
+    its own right (and overlaps with the S3 displacement theme) but it is a
+    different sample, so it is not mixed in here.
+    """
+    heavy = 1000.0
+    return """# AIDA-Scout S5b: light RPV Higgsino multiplet at {m:g} GeV.
+# Non-excluded companion to RPV_squark150_cascade_LSP100: electroweak production
+# keeps this out of reach of the RPV multijet searches that exclude light squarks.
+#
+# Decays through lambda''_323 (t s b).  The chi-t-stop vertex uses the top
+# Yukawa, so a pure Higgsino decays promptly here -- which is exactly why heavy
+# flavour matters: with lambda''_112 the same state would be Yukawa-suppressed
+# and non-prompt.
+
+# The near-degenerate multiplet.
+set param_card mass 1000022 {m:g}
+set param_card mass 1000023 {m1:g}
+set param_card mass 1000024 {m1:g}
+
+# Everything else decoupled: squarks only appear off-shell in the RPV decay.
+set param_card mass 1000025 {h:g}
+set param_card mass 1000035 {h:g}
+set param_card mass 1000037 {h:g}
+set param_card mass 1000021 {h:g}
+set param_card mass 1000001 {h:g}
+set param_card mass 1000002 {h:g}
+set param_card mass 1000003 {h:g}
+set param_card mass 1000004 {h:g}
+set param_card mass 1000005 {h:g}
+set param_card mass 1000006 {h:g}
+set param_card mass 2000001 {h:g}
+set param_card mass 2000002 {h:g}
+set param_card mass 2000003 {h:g}
+set param_card mass 2000004 {h:g}
+set param_card mass 2000005 {h:g}
+set param_card mass 2000006 {h:g}
+
+# lambda''_323 (t s b) only -- the third-generation operator a Higgsino can
+# actually use.  Every other RVLAMUDD entry is zeroed: the UFO ships 0.2 on all
+# of them, which would otherwise reopen the light-flavour modes.
+set param_card rvlamudd 1 1 2 0.0
+set param_card rvlamudd 1 1 3 0.0
+set param_card rvlamudd 1 2 1 0.0
+set param_card rvlamudd 1 2 3 0.0
+set param_card rvlamudd 1 3 1 0.0
+set param_card rvlamudd 1 3 2 0.0
+set param_card rvlamudd 2 1 2 0.0
+set param_card rvlamudd 2 1 3 0.0
+set param_card rvlamudd 2 2 1 0.0
+set param_card rvlamudd 2 2 3 0.0
+set param_card rvlamudd 2 3 1 0.0
+set param_card rvlamudd 2 3 2 0.0
+set param_card rvlamudd 3 1 2 0.0
+set param_card rvlamudd 3 1 3 0.0
+set param_card rvlamudd 3 3 1 0.0
+
+# The surviving coupling and its antisymmetric partner.
+set param_card rvlamudd 3 2 3 1.0e-2
+set param_card rvlamudd 3 3 2 -1.0e-2
+
+# Non-zero widths for the propagators in the decay chain.  As for the squark
+# cascade these make MG5's reported cross section meaningless -- normalise with
+# the production cross section instead (generate the production process alone).
+set param_card decay 1000022 1.0e-2
+set param_card decay 1000023 1.0e-2
+set param_card decay 1000024 1.0e-2
+""".format(m=m_ewkino, m1=m_ewkino + 1.0, h=heavy)
+
+
+def rpv_ewkino_points():
+    # Top on shell in n1 -> t s b, so the decay is prompt and gives 5 jets/side.
+    return [200.0, 300.0]
+
+
+# ---------------------------------------------------------------------------
+# S5c: displaced RPV Higgsino, below the top threshold.
+#
+# Below ~180 GeV the lambda''_323 mode n1 -> t s b closes.  The natural operator
+# that stays open is lambda''_223 (c s b): it runs off the CHARM Yukawa instead
+# of the top Yukawa, which is smaller by roughly (y_c/y_t)^2 ~ 1e-5, so the
+# Higgsino becomes long-lived without any tuning.  The displacement is physical,
+# not imposed.
+#
+# HOW THE DISPLACEMENT SURVIVES THE CHAIN.  The decays are in the matrix element,
+# so the daughters would normally be written at the primary vertex and all the
+# displacement would be lost.  Two things prevent that:
+#   * time_of_flight = 0 in the run card, so MG5 writes the invariant lifetime
+#     (VTIMUP) of the intermediate resonance into the LHE, and
+#   * the Higgsino width is set to hit a target ctau, using
+#         ctau[mm] = hbar*c / Gamma = 1.973e-13 / Gamma[GeV].
+# Pythia then propagates the resonance before decaying it, and Delphes'
+# ParticlePropagator starts the daughters from the displaced vertex.
+#
+# Verify VTIMUP is actually non-zero in the LHE before trusting the sample --
+# this is the step most likely to fail silently.
+CTAU_MM_TO_WIDTH = 1.973e-13  # ctau[mm] = CTAU_MM_TO_WIDTH / Gamma[GeV]
+
+RPV_EWKINO_DISP_PROC_CARD = """import model RPVMSSM_UFO
+
+# Displaced light Higgsino multiplet, below the top threshold.
+#
+# lambda''_223 (c s b) rather than _323 (t s b): at m < m_top the t s b mode is
+# closed, and the c s b mode runs off the charm Yukawa, which is small enough
+# that the Higgsino is naturally long-lived.  Three jets per state, two of them
+# heavy-flavour, all emerging from a displaced vertex.
+
+define q2 = c c~ s s~ b b~
+
+generate    p p > n1 x1+, (n1 > q2 q2 q2), (x1+ > q2 q2 q2)
+add process p p > n1 x1-, (n1 > q2 q2 q2), (x1- > q2 q2 q2)
+add process p p > x1+ x1-, (x1+ > q2 q2 q2), (x1- > q2 q2 q2)
+
+output _OUTDIR_
+"""
+
+
+def rpv_ewkino_disp_customize(m_ewkino, ctau_mm):
+    width = CTAU_MM_TO_WIDTH / ctau_mm
+    heavy = 1000.0
+    return """# AIDA-Scout S5c: displaced RPV Higgsino at {m:g} GeV, ctau = {c:g} mm.
+#
+# Below the top threshold lambda''_323 (t s b) is closed, so this point uses
+# lambda''_223 (c s b), which runs off the charm Yukawa and is naturally
+# long-lived.  The width below is set to hit the target ctau via
+#     ctau[mm] = 1.973e-13 / Gamma[GeV]
+# and the run card sets time_of_flight = 0 so MG5 writes the lifetime into the
+# LHE.  To scan the lifetime, change ONLY the 1000022 width -- the process
+# directory does not need regenerating.
+
+# The near-degenerate multiplet, below the top threshold.
+set param_card mass 1000022 {m:g}
+set param_card mass 1000023 {m1:g}
+set param_card mass 1000024 {m1:g}
+
+# Everything else decoupled.
+set param_card mass 1000025 {h:g}
+set param_card mass 1000035 {h:g}
+set param_card mass 1000037 {h:g}
+set param_card mass 1000021 {h:g}
+set param_card mass 1000001 {h:g}
+set param_card mass 1000002 {h:g}
+set param_card mass 1000003 {h:g}
+set param_card mass 1000004 {h:g}
+set param_card mass 1000005 {h:g}
+set param_card mass 1000006 {h:g}
+set param_card mass 2000001 {h:g}
+set param_card mass 2000002 {h:g}
+set param_card mass 2000003 {h:g}
+set param_card mass 2000004 {h:g}
+set param_card mass 2000005 {h:g}
+set param_card mass 2000006 {h:g}
+
+# lambda''_223 (c s b) only.  The UFO ships 0.2 on every RVLAMUDD entry, so all
+# the others are zeroed or the light-flavour and top modes reopen.
+set param_card rvlamudd 1 1 2 0.0
+set param_card rvlamudd 1 1 3 0.0
+set param_card rvlamudd 1 2 1 0.0
+set param_card rvlamudd 1 2 3 0.0
+set param_card rvlamudd 1 3 1 0.0
+set param_card rvlamudd 1 3 2 0.0
+set param_card rvlamudd 2 1 2 0.0
+set param_card rvlamudd 2 1 3 0.0
+set param_card rvlamudd 2 2 1 0.0
+set param_card rvlamudd 2 3 1 0.0
+set param_card rvlamudd 2 3 2 0.0
+set param_card rvlamudd 3 1 2 0.0
+set param_card rvlamudd 3 1 3 0.0
+set param_card rvlamudd 3 2 1 0.0
+set param_card rvlamudd 3 2 3 0.0
+set param_card rvlamudd 3 3 1 0.0
+set param_card rvlamudd 3 3 2 0.0
+
+# The surviving coupling and its antisymmetric partner.
+set param_card rvlamudd 2 2 3 1.0e-2
+set param_card rvlamudd 2 3 2 -1.0e-2
+
+# ctau = {c:g} mm.  This width is what sets the displacement; it also makes the
+# cross section MG5 reports meaningless, as for every other decay-chain point.
+set param_card decay 1000022 {w:.4e}
+set param_card decay 1000023 {w:.4e}
+set param_card decay 1000024 {w:.4e}
+""".format(m=m_ewkino, m1=m_ewkino + 1.0, h=heavy, c=ctau_mm, w=width)
+
+
+def rpv_ewkino_disp_points():
+    """(mass, ctau_mm) below the top threshold."""
+    return [(150.0, 10.0)]
+
+
+# ---------------------------------------------------------------------------
 # Per-point READMEs (spec deliverable 5.6)
 # ---------------------------------------------------------------------------
 
@@ -715,7 +1142,7 @@ def s2_readme_body(mzp, mpi, flav):
 
 def build_readmes(outdir):
     # ---- S2 ----
-    for mzp in (500, 1000):
+    for mzp in (200, 500, 1000):
         for mpi in (2, 5):
             for flav in ("ee", "mumu"):
                 name = "HVdilep_Zp{0}_piD{1}_{2}".format(mzp, mpi, flav)
@@ -734,13 +1161,19 @@ def build_readmes(outdir):
                           "`HVdilep_Zp{0}_piD{1}_{4}`, which is **identical in every respect "
                           "except the lepton flavour**.").format(mzp, mpi, 2 * mpi, lep, other_flav(flav)),
                     config=("* Hard process: `HiddenValley:ffbar2Zv`, m_Zp = {0} GeV\n"
-                            "* Lambda = {1} GeV, pTminFSR = {2:g} GeV, Ngauge = 3, nFlav = 2, probVector = 0.75\n"
+                            "* Shower: {5}\n"
+                            "* Lambda = {1} GeV, Ngauge = 3, nFlav = 2, probVector = 0.75\n"
                             "* m_piD = {1} GeV, m_rhoD = {3} GeV, m_qv = {1} GeV\n"
                             "* Dark meson decays: 100% -> {4}\n"
-                            "* Cross section: **{5} pb** (Pythia LO, no k-factor)\n"
-                            "* Expected multiplicity: ~11 leptons/event at the "
-                            "Zp500/piD2 point (measured)").format(
-                                mzp, mpi, 1.1 * mpi, 2 * mpi, lep, S2_XSEC[(mzp, mpi, flav)]),
+                            "* Cross section: **{6} pb** (Pythia LO, no k-factor)").format(
+                                mzp, mpi, 1.1 * mpi, 2 * mpi, lep,
+                                ("`alphaOrder = 0`, `alphaFSR = {0:g}`, `pTminFSR = 0.5` "
+                                 "-- strong-coupling / high-multiplicity configuration, "
+                                 "see below".format(S2_ALPHA_FSR[mzp])
+                                 if S2_ALPHA_FSR[mzp] is not None else
+                                 "`alphaOrder = 1`, `pTminFSR = 1.1 x Lambda` "
+                                 "(specification default)"),
+                                S2_XSEC.get((mzp, mpi, flav), "see outdir/cross_section.txt")),
                     menu=MENU.format(
                         ht="see caveat below", jet="see caveat below", quad="no",
                         bph=bph, mu44="**YES** if mumu" if flav == "mumu" else "N/A",
@@ -822,32 +1255,48 @@ def build_readmes(outdir):
         notes=SUEP_WARNING + C4_NOTE)
 
     # ---- S4 ----
-    for ma in (5, 10, 15):
-        name = "hToAA_4tau_ma{0}".format(ma)
-        write_readme(
-            os.path.join(outdir, name, "README.md"),
-            name=name, sid="S4 (multi-soft-tau)", mode="pythia",
-            what=("A 125 GeV Higgs produced by gluon fusion decays to a pair of light "
-                  "pseudoscalars of mass {0} GeV, each of which decays to tau+ tau-. "
-                  "The final state is four taus sharing 125 GeV, so each tau carries "
-                  "roughly 30 GeV and each tau *jet* considerably less.").format(ma),
-            config=("* Hard process: `HiggsSM:gg2H`, m_h = 125 GeV\n"
-                    "* `25:addChannel -> 36 36`, all SM Higgs decays closed\n"
-                    "* m_a = {0} GeV, `36:addChannel -> 15 -15`, prompt (`tau0 = 0`)\n"
-                    "* No 2HDM+S UFO is required -- this is entirely a decay-table "
-                    "configuration, which is why it runs on the pythia branch\n"
-                    "* Reference cross section sigma(gg->h) = **28.07 pb** (Pythia LO, "
-                    "no k-factor); same normalisation warning as S1 -- rescale by your "
-                    "assumed BR(h->aa)").format(ma),
-            menu=MENU.format(ht="no", jet="no", quad="no", bph="no", mu44="no",
-                             ele="no", pho="no",
-                             tau="**no** -- the 52,52 PuppiTau floor is far above a "
-                                 "tau from a 125/4 GeV share",
-                             met="no (neutrinos partly cancel)"),
-            notes=("\n## Note\n\nThe leptonic tau decays give a few soft electrons and "
-                   "muons. The muonic ones can occasionally reach the BPH DoubleTkMuon "
-                   "2,2 seed, so this point is not a *pure* trigger-blind sample; "
-                   "quantify the leakage before using it in a sensitivity claim.\n"))
+    for mode, masses, primary in HAA_POINTS:
+        for ma, ctau in ([(m, None) for m in masses]
+                         + ([(primary, c) for c in HAA_CTAUS] if primary else [])):
+            name = ("hToAA_{0}_ma{1}".format(mode, ma) if ctau is None else
+                    "hToAA_{0}_ma{1}_ctau{2}mm".format(mode, ma, ctau))
+            _, obj, desc = HAA_MODES[mode]
+            per_obj = 125.0 / 4.0
+            life = ("prompt (`tau0 = 0`)" if ctau is None else
+                    "**ctau = {0:g} mm**".format(ctau))
+            write_readme(
+                os.path.join(outdir, name, "README.md"),
+                name=name, sid="S4 (h -> a a, {0})".format(desc), mode="pythia",
+                what=("A 125 GeV Higgs produced by gluon fusion decays to a pair of light "
+                      "pseudoscalars of mass {0} GeV, each decaying to {1}. The final "
+                      "state is four {1} objects sharing 125 GeV, so each carries roughly "
+                      "{2:.0f} GeV before any further decay.{3}").format(
+                          ma, obj, per_obj,
+                          "" if ctau is None else
+                          "\n\nThe pseudoscalar is given a proper lifetime of {0:g} mm, so "
+                          "the four objects emerge from two displaced vertices. The "
+                          "prompt reference is `hToAA_{1}_ma{2}`.".format(ctau, mode, ma)),
+                config=("* Hard process: `HiggsSM:gg2H`, m_h = 125 GeV\n"
+                        "* `25:addChannel -> 36 36`, all SM Higgs decays closed\n"
+                        "* m_a = {0} GeV, `36:addChannel -> {1}`, {2}\n"
+                        "* No 2HDM+S UFO is required -- this is entirely a decay-table "
+                        "configuration, which is why it runs on the pythia branch\n"
+                        "* Reference cross section sigma(gg->h) = **28.07 pb** (Pythia LO, "
+                        "no k-factor); rescale by your assumed BR(h->aa) -- see the "
+                        "normalisation warning shared with the S1 points").format(
+                            ma, HAA_MODES[mode][0], life),
+                menu=MENU.format(
+                    ht="no", jet="no", quad="no", bph="no", mu44="no",
+                    ele="no",
+                    pho=("**no** -- the DoubleTkIsoPhoton 22,12 floor is above a photon "
+                         "from a {0} GeV a; at low m_a the pair is collimated and "
+                         "reconstructs as one object".format(ma)
+                         if mode == "4gamma" else "no"),
+                    tau=("**no** -- the 52,52 PuppiTau floor is far above a tau from a "
+                         "125/4 GeV share" if mode == "4tau" else "no"),
+                    met=("no (neutrinos partly cancel)" if mode == "4tau" else "no")),
+                notes=HAA_NOTES.get(mode, "") + (
+                    "" if ctau is None else HAA_DISPLACED_NOTE.format(c=ctau)))
 
     # ---- C3 ----
     write_readme(
@@ -1037,11 +1486,12 @@ Consequences:
 * The 1.6% leading-jet estimate in specification section 3 (gap 1) assumes
   uniform energy distribution and **does not apply to these events**. Expect
   more energy in the leading jet than a true SUEP would give.
-* **Control C4 (anisotropy control) is degenerate with the nominal point under
-  this approximation** and cannot be built from it. C4 requires a genuine
-  isotropy knob, i.e. a real thermal shower. It is the control the
-  specification flags as "most likely to change how we interpret results", so
-  this is a real gap in the deliverable.
+* **Control C4 (anisotropy control) has been dropped by decision.** It is
+  degenerate with the nominal point under this approximation and cannot be built
+  from it: C4 requires a genuine isotropy knob, i.e. a real thermal shower.
+  The specification flags C4 as the control "most likely to change how we
+  interpret results", so if a thermal shower is ever integrated, C4 is the first
+  thing to add back.
 
 To do this properly, integrate the Knapen/Griso/Papucci thermal shower (or the
 CMS-adopted equivalent) as a Pythia8 UserHook in `main_signal.cc`; the
@@ -1097,6 +1547,324 @@ S2_XSEC = {
 }
 GGH_XSEC = {125: "28.07", 400: "5.212"}
 
+# Measured on showered LHE events with anti-kT R=0.4 (Pythia SlowJet), |eta|<2.5.
+RPV_MEAS = {
+    (150.0, 100.0): {
+        "ht": "**UNRESOLVED** -- 0.00 and 0.27 in two samples, see below",
+        "jet": "no (leading jet 68-99 GeV, both samples)",
+        "text": ("Two independent runs at this mass point, anti-kT R=0.4, |eta| < 2.5.\n"
+                 "They **disagree**, and both are fluctuation-dominated:\n\n"
+                 "| quantity | run A (7 ev) | run B (11 ev) |\n"
+                 "|---|---|---|\n"
+                 "| N(jets > 10 GeV) | 9.3 | 7.6 |\n"
+                 "| N(jets > 30 GeV) | 4.3 | 4.3 |\n"
+                 "| HT30 median | 231 GeV | 284 GeV |\n"
+                 "| leading jet median | 68 GeV | 99 GeV |\n"
+                 "| MET median | 0 | 0 |\n"
+                 "| fires PuppiHT450 | 0.00 | **0.27** |\n"
+                 "| fires SinglePuppiJet230 | 0.00 | 0.00 |\n\n"
+                 "**What is established:** the topology gives roughly 8 jets above 10 GeV "
+                 "(both runs land at 7.6-9.3, in or next to the specified 8-12 band), the "
+                 "leading jet stays well under the 230 GeV seed, and MET is identically "
+                 "zero. This is the best of the four points scanned and the recommended "
+                 "one.\n\n"
+                 "**What is NOT established:** whether it clears PuppiHT 450. The two "
+                 "runs give 0.00 and 0.27. With ~10 events each neither is meaningful, and "
+                 "an HT30 median of 231-284 GeV sits close enough to 450 that the tail "
+                 "matters. **Resolve this before using the point in any sensitivity "
+                 "claim** -- and if the HT rate is real, drop m_squark further, since "
+                 "HT_true = 2 x m_squark scales directly with it."),
+    },
+    (120.0, 90.0): {
+        "ht": "no (HT30 median 356 GeV, 4 events)",
+        "jet": "no (leading jet median 165 GeV, 4 events)",
+        "text": ("Shape measured on **only 4 unweighted events** -- indicative at best:\n\n"
+                 "* N(jets > 10 GeV) = 7.5, N(jets > 30 GeV) = 3.5\n"
+                 "* HT30 median 356 GeV, leading jet median 165 GeV, MET median 0\n\n"
+                 "Below the 8-jet target. Prefer `RPV_squark150_cascade_LSP100`."),
+    },
+}
+
+HAA_NOTES = {
+    "4tau": ("\n## Note\n\nThe leptonic tau decays give a few soft electrons and "
+             "muons. The muonic ones can occasionally reach the BPH DoubleTkMuon "
+             "2,2 seed, so this point is not a *pure* trigger-blind sample; "
+             "quantify the leakage before using it in a sensitivity claim.\n"),
+    "4b": ("\n## Note\n\nm_a must clear 2 m_b ~ 9.4 GeV for this mode, which is why "
+           "the mass points start at 15 GeV rather than the 5 GeV used for the tau "
+           "mode. The four b jets are soft and, at the lower masses, the two b jets "
+           "from one `a` merge into a single reconstructed jet.\n"),
+    "4gamma": ("\n## Note -- collimation depends strongly on m_a\n\n"
+               "All three mass points give exactly 4.0 signal photons per event with a "
+               "median pT around 21-24 GeV, but how they reconstruct differs:\n\n"
+               "| m_a | median dR(gamma gamma) | fraction with dR < 0.04 |\n"
+               "|---|---|---|\n"
+               "| 1 GeV | 0.047 | **0.38** |\n"
+               "| 5 GeV | 0.247 | 0.00 |\n"
+               "| 10 GeV | 0.506 | 0.00 |\n\n"
+               "At m_a = 1 GeV the pair is strongly collimated and a large fraction "
+               "merges into a **single** EM cluster -- the 'photon jet' signature -- "
+               "so do not interpret that point as four resolved photons. At 5 and "
+               "10 GeV the photons are well separated.\n\n"
+               "Note also that the median photon pT sits close to the "
+               "DoubleTkIsoPhoton 22,12 threshold, so this sample is not automatically "
+               "below the photon seed; check it at reconstruction level.\n"),
+}
+
+HAA_DISPLACED_NOTE = """
+## Displacement -- verified, and how it is imposed
+
+The lifetime is imposed through the **width**, not through `36:tau0`.
+Particle 36 is a resonance with `doForceWidth` on, so Pythia derives
+tau0 = hbar / Gamma at initialisation and silently overwrites any tau0 set by
+hand. Setting `36:tau0` alone produces a sample that is prompt despite asking for
+a displacement -- this was observed directly before it was fixed. The width is
+therefore set to Gamma = hbar*c / ctau = 1.973e-13 / ctau[mm], and tau0 is set as
+well so the two agree.
+
+`ParticleDecays:limitTau0 = off` is also required, or Pythia refuses to decay
+anything with tau0 above its default 10 mm ceiling and the pseudoscalar becomes
+silently invisible.
+
+Measured transverse decay radius (150 events), confirming the scaling:
+
+| point | median Rxy | outside tracker |
+|---|---|---|
+| `hToAA_4tau_ma10_ctau1mm` | 1.7 mm | 0% |
+| `hToAA_4tau_ma10_ctau10mm` | 17.0 mm | 0% |
+| `hToAA_4tau_ma10_ctau100mm` | 169.8 mm | 6% |
+| `hToAA_4b_ma30_ctau10mm` | 5.9 mm | 0% |
+| `hToAA_4b_ma30_ctau100mm` | 58.7 mm | 1% |
+
+The median radius exceeds ctau because of the boost, and a lighter `a` is boosted
+more -- which is why the 4tau points (m_a = 10) displace further than the 4b
+points (m_a = 30) at the same lifetime.
+
+## Downstream limits
+
+* `cards/delphes_card.dat` has **no d0 dependence** in its L1T tracking
+  efficiencies -- they are functions of pt and eta only. The sample is correct at
+  truth level, but the chain will not reproduce the loss of displaced tracks at
+  L1.
+* Delphes drops particles produced outside the tracker (R = 1.29 m,
+  half-length 3 m). That costs nothing at ctau = 1 and 10 mm and only a few
+  percent at 100 mm, as tabulated above, but it grows quickly at longer
+  lifetimes.
+"""
+
+RPV_EWKINO_DISP_NOTES = """
+## Why this point is long-lived by construction
+
+Below about 180 GeV the lambda''_323 mode `n1 -> t s b` closes, because the top
+cannot be on shell. The operator that stays open is lambda''_223 (c s b), and it
+runs off the **charm** Yukawa rather than the top Yukawa -- smaller by roughly
+(y_c/y_t)^2 ~ 1e-5. The Higgsino is therefore naturally long-lived: the
+displacement is a consequence of the mass being below the top threshold, not
+something imposed by hand.
+
+The width is nonetheless set explicitly to hit ctau = {c:g} mm, so the lifetime
+is a controlled knob rather than an accident of the coupling value.
+
+## How the displacement survives the chain -- CHECK THIS FIRST
+
+The decays are generated in the matrix element, so by default the daughters
+would be written at the primary vertex and **all the displacement would be
+lost**. Two things prevent that:
+
+* the run card sets `time_of_flight = 0`, so MG5 writes the invariant lifetime
+  (`VTIMUP`) of the intermediate resonance into the LHE, and
+* the Higgsino width is set to the target ctau.
+
+Pythia then propagates the resonance before decaying it, and Delphes'
+`ParticlePropagator` starts the daughters from the displaced vertex.
+
+**This is the step most likely to fail silently.** Before trusting the sample,
+open the LHE and confirm `VTIMUP` is non-zero for the 1000022 entries. If it is
+zero, the sample is prompt and worthless as a displaced benchmark.
+
+## Downstream caveats, same as S3
+
+* `cards/delphes_card.dat` has **no d0 dependence** in its L1T tracking
+  efficiencies -- they are functions of pt and eta only. So this sample is
+  correct at truth level but the chain will not reproduce the loss of displaced
+  tracks at L1. See the S3 point READMEs for the same limitation.
+* Delphes drops particles produced outside the tracker (R = 1.29 m). At
+  ctau = {c:g} mm with the boosts here that should be a small effect, but it grows
+  quickly if the lifetime is scanned upward.
+
+## Measured -- and the displacement is confirmed real
+
+MG5 generates the process and the lifetime survives into the LHE. Over 4000
+resonance entries:
+
+| VTIMUP | measured | expected for ctau = {c:g} mm |
+|---|---|---|
+| mean | **10.02 mm** | 10.0 |
+| median | **6.84 mm** | 6.93 (= 10 ln2) |
+| max | 90.5 mm | — |
+
+That is a textbook exponential at the requested lifetime, so the
+`time_of_flight = 0` mechanism works and the sample really is displaced.
+
+Jets, on 500 showered events (anti-kT R = 0.4, |eta| < 2.5):
+
+| quantity | value |
+|---|---|
+| N(jets > 10 GeV) | **6.4** |
+| N(jets > 30 GeV) | 3.8 |
+| HT over jets > 30 GeV, median | **238 GeV** |
+| leading jet, median | 89 GeV |
+| MET, median | 6 GeV |
+| fires PuppiHT450 | **0.11** |
+| fires SinglePuppiJet230 | **0.04** |
+
+**Unweighting is excellent: the full 2000-event request came back unweighted.**
+Compare the squark cascade's eight-parton chain at 0.2-0.7%. This point is cheap
+to produce at scale.
+
+## This is the better of the two Higgsino points for menu evasion
+
+It fires PuppiHT450 in 11% and SinglePuppiJet230 in 4%, against 32% and 16% for
+the prompt `RPV_ewkino200_UDD`. Being below the top threshold is what does it --
+no hadronic top means no hard jets -- and the same fact is what makes it
+long-lived. The cost is jet multiplicity: 6.4 rather than 7.1, both short of the
+8-12 target.
+
+## Downstream caveats, same as S3
+
+* `cards/delphes_card.dat` has **no d0 dependence** in its L1T tracking
+  efficiencies -- they are functions of pt and eta only. The sample is correct at
+  truth level, but the chain will not reproduce the loss of displaced tracks at
+  L1. See the S3 point READMEs for the identical limitation.
+* Delphes drops particles produced outside the tracker (R = 1.29 m). The measured
+  VTIMUP tail reaches 90 mm proper, so with boost this is a small but non-zero
+  effect here, and it grows quickly if the lifetime is scanned upward.
+"""
+
+RPV_EWKINO_NOTES = """
+## Why this point exists
+
+`RPV_squark150_cascade_LSP100` reproduces the S5 signature but a 150 GeV squark
+is excluded by existing LHC searches. This point is the non-excluded companion:
+
+* **Production is electroweak**, so the cross section is O(pb) rather than the
+  ~1600 pb of 150 GeV squarks. The RPV multijet searches that exclude light
+  squarks are driven by strong production and have very little reach here.
+* The binding constraint is LEP, m_chargino >~ 92-103 GeV. A {m:g} GeV Higgsino
+  is comfortably allowed.
+
+## Why heavy flavour is essential here
+
+A Higgsino couples to a quark and a squark through **that quark's Yukawa**. With
+lambda''_112 (u d s) the coupling is Yukawa-suppressed to the point where the
+decay is not prompt, so a pure-Higgsino benchmark with light-flavour decays does
+not work. lambda''_323 (t s b) goes through the **top** Yukawa instead, which is
+large: the decay is prompt and unsuppressed.
+
+Allowing heavy flavour therefore does two things at once -- it makes a genuine
+pure-Higgsino benchmark possible at all, and it raises the jet multiplicity from
+6 to 8-10, because `n1 -> t s b` with a hadronic top is five jets rather than
+three.
+
+## Mass choice
+
+The top must be on shell for this to be prompt. Below about 180 GeV the t s b
+mode closes, the decay becomes four-body through an off-shell top, and the
+Higgsino becomes **long-lived** -- a displaced multijet signature. That is a
+legitimate and arguably more interesting signal for this analysis (it overlaps
+with the S3 displacement theme), but it is a different sample and is not mixed
+in here. If you want it, lower the mass below ~180 GeV or reduce lambda''_323,
+and check the resulting ctau before trusting the sample.
+
+## Measured
+
+MG5 generates the process cleanly (62 subprocesses) and finds the predicted
+modes `n1 > s t b` and `x1+ > s~ b~ b~`. Measured on 500 showered events,
+anti-kT R = 0.4, |eta| < 2.5:
+
+| quantity | value |
+|---|---|
+| N(jets > 10 GeV) | **7.1** |
+| N(jets > 30 GeV) | 4.7 |
+| HT over jets > 30 GeV, median | **355 GeV** |
+| leading jet, median | 122 GeV |
+| MET, median | 8 GeV |
+| fires PuppiHT450 | **0.32** |
+| fires SinglePuppiJet230 | **0.16** |
+
+Unweighting is comfortable -- 530 events from a 2000 request, far better than the
+squark cascade's 0.2-0.7%.
+
+## This point leaks into the menu -- read before using it
+
+**It fires PuppiHT450 in 32% of events and SinglePuppiJet230 in 16%.** The
+hadronic top that buys the jet multiplicity also supplies hard jets, and
+HT_true = 2m = 400 GeV sits close enough to the 450 seed that a third of the
+distribution crosses it. As a demonstration that the menu is *blind* to this
+topology, this point is weak.
+
+The measured multiplicity is also **7.1 jets, not the 8-10 the arithmetic
+suggested** -- jets merge and some fall below 10 GeV.
+
+Both problems get worse at m = 300 (HT_true = 600 GeV). The mass cannot be
+lowered either, because below ~180 GeV the top goes off shell and the decay stops
+being prompt.
+
+**If the goal is menu evasion rather than raw multiplicity, prefer
+`RPV_ewkino150_UDD_ctau10mm`**: it sits below the top threshold, fires HT450 in
+only 11% and SinglePuppiJet230 in 4%, and carries a displaced vertex as well.
+This point is better used as the *prompt* reference against which that one is
+compared.
+"""
+
+RPV_CASCADE_NOTES = """
+## Why the decays are in the matrix element
+
+Two independent blockers rule out the ordinary decay-table route for a light RPV
+LSP, both found by running this chain:
+
+1. **MG5 `compute_widths` zeroes any partial width below the QCD scale**
+   (~0.2 GeV). The compressed cascade widths are 0.01-0.03 GeV -- physically
+   prompt, but written out as exactly `0.000000e+00`. The squarks and the LSP
+   then come back **stable**, and the events are useless. A light RPV LSP
+   decaying through lambda'' = 1e-2 is far below the threshold and can never be
+   described this way.
+2. **Letting Pythia recompute the widths instead** (`SLHA:useDecayTable = off`)
+   fails differently: Pythia's RPV machinery emits invalid particle codes on
+   this UFO's SLHA (`unknown particle code, id = -2000304`) and every event is
+   rejected.
+
+Generating the cascade in the matrix element sidesteps both -- the LHE arrives
+fully decayed and no decay table is ever consulted.
+
+## The mass points are forced by physics, not preference
+
+RPV has no invisible particle, so the entire parent mass becomes visible jets:
+HT_true = 2 x m_squark. For N jets of average energy E that fixes
+2 x m_squark = N x E. Ten jets at 20-30 GeV therefore requires
+m_squark ~ 100-150 GeV. **The specification's 300 and 600 GeV cannot produce
+10-30 GeV jets under any topology** -- at 300 GeV the same cascade gives eight
+jets averaging ~75 GeV. Both are generated so the contrast is visible, but only
+the light points meet the stated target.
+
+Note that squarks at 120-150 GeV are excluded by existing LHC searches. For an
+anomaly-detection benchmark that is acceptable -- what matters is the signature,
+not the exclusion status -- but it must not be presented as a viable model point.
+
+## Measured behaviour
+
+{meas}
+
+## Unweighting efficiency warning
+
+The eight-parton decay chain unweights poorly: a 1000-event request returned
+**7** unweighted events with the near-zero widths MG5 needs for the propagator.
+Raising the Breit-Wigner widths (squark 1.5 GeV, LSP 0.1 GeV) improves this
+substantially and is what the shipped customizecards use, but **measure the
+per-job yield before sizing a 100k-event production** -- this point is far more
+expensive per event than any other in the campaign.
+"""
+
 
 # ---------------------------------------------------------------------------
 
@@ -1125,6 +1893,131 @@ def main():
             fh.write(rpv_run_card())
         with open(os.path.join(d, "{0}_customizecards.dat".format(name)), "w") as fh:
             fh.write(rpv_customize(m))
+        written.append(d)
+
+    for m, y in rpv_cascade_points():
+        name = "RPV_squark{0:g}_cascade_LSP{1:g}".format(m, y)
+        d = os.path.join(args.outdir, name)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "{0}_proc_card.dat".format(name)), "w") as fh:
+            fh.write(RPV_CASCADE_PROC_CARD)
+        with open(os.path.join(d, "{0}_run_card.dat".format(name)), "w") as fh:
+            fh.write(rpv_run_card())
+        with open(os.path.join(d, "{0}_customizecards.dat".format(name)), "w") as fh:
+            fh.write(rpv_cascade_customize(m, y))
+        _unused_cascade_readme_marker = None
+        write_readme(
+            os.path.join(d, "README.md"),
+            name=name, sid="S5 (stealth SUSY / light RPV cascade)", mode="madgraph",
+            what=("Pair production of {0:g} GeV right-handed up squarks, each decaying to a "
+                  "quark plus a {1:g} GeV neutralino LSP, with the LSP decaying to three "
+                  "light quarks through the lambda''_112 UDD operator. Eight partons at "
+                  "the hard-process level, no MET, no isotropy -- the 'high multiplicity "
+                  "but not isotropic' corner.").format(m, y),
+            config=("* Model `RPVMSSM_UFO`; the full cascade is in the **matrix element**, "
+                    "not in decay tables (see below)\n"
+                    "* m_squark = {0:g} GeV, m_LSP = {1:g} GeV, splitting {2:g} GeV\n"
+                    "* Only lambda''_112 is switched on, so the decays are to light quarks\n"
+                    "* Gluino, third generation and the heavier gauginos decoupled at "
+                    "{3:g} GeV\n"
+                    "* run_card deviates from the repo convention (`ickkw = 0`, "
+                    "`xqcut = 0`, `ptj1min = 0`) per specification section 4").format(
+                        m, y, m - y, m + 400.0),
+            menu=MENU.format(ht=RPV_MEAS.get((m, y), {}).get("ht", "to measure"),
+                             jet=RPV_MEAS.get((m, y), {}).get("jet", "to measure"),
+                             quad="to measure", bph="no", mu44="no", ele="no",
+                             pho="no", tau="no", met="**no** -- RPV, nothing escapes"),
+            notes=RPV_CASCADE_NOTES.format(
+                m=m, y=y, meas=RPV_MEAS.get((m, y), {}).get("text",
+                    "Not yet measured for this point; run the scan in "
+                    "`make_signal_cards.py` docs to fill this in.")))
+        written.append(d)
+
+    for m in rpv_ewkino_points():
+        name = "RPV_ewkino{0:g}_UDD".format(m)
+        d = os.path.join(args.outdir, name)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "{0}_proc_card.dat".format(name)), "w") as fh:
+            fh.write(RPV_EWKINO_PROC_CARD)
+        with open(os.path.join(d, "{0}_run_card.dat".format(name)), "w") as fh:
+            fh.write(rpv_run_card())
+        with open(os.path.join(d, "{0}_customizecards.dat".format(name)), "w") as fh:
+            fh.write(rpv_ewkino_customize(m))
+        write_readme(
+            os.path.join(d, "README.md"),
+            name=name, sid="S5b (light RPV Higgsinos -- non-excluded companion)",
+            mode="madgraph",
+            what=("Electroweak production of a near-degenerate Higgsino multiplet at "
+                  "{0:g} GeV, each state decaying through the lambda''_323 UDD operator to "
+                  "t s b. With a hadronic top that is five jets per neutralino, so the "
+                  "pair gives **8-10 jets**, several of them b-tagged, with no MET.\n\n"
+                  "This is the **non-excluded companion** to "
+                  "`RPV_squark150_cascade_LSP100`. That point reproduces the target "
+                  "signature but sits at a squark mass ruled out by existing LHC searches; "
+                  "this one delivers a comparable topology at a mass that is not.").format(m),
+            config=("* Model `RPVMSSM_UFO`; electroweakino decays in the **matrix "
+                    "element**, not decay tables (same reason as the squark cascade)\n"
+                    "* Production: `p p > n1 x1+`, `n1 x1-`, `x1+ x1-` -- electroweak\n"
+                    "* Multiplet at {0:g} GeV, everything else decoupled at 1 TeV\n"
+                    "* **lambda''_323 only** (t s b); every other RVLAMUDD entry zeroed, "
+                    "since the UFO ships 0.2 on all of them\n"
+                    "* The top is left undecayed in the matrix element and handed to "
+                    "Pythia -- its width is large and standard\n"
+                    "* Expected: 8-10 jets, HT_true = 2m = {1:.0f} GeV\n"
+                    "* Cross section: **do not use the number MG5 reports** -- the widths "
+                    "are hand-set, see the squark cascade README. Normalise with the "
+                    "production cross section generated on its own.").format(m, 2 * m),
+            menu=MENU.format(
+                ht=("**verify** -- HT_true = {0:.0f} GeV, close to the 450 seed".format(2 * m)
+                    if m >= 250 else
+                    "**likely no** -- HT_true = {0:.0f} GeV spread over 8-10 jets".format(2 * m)),
+                jet="**no** (expected leading jet well under 230)",
+                quad="verify", bph="no", mu44="no", ele="no", pho="no", tau="no",
+                met=("mostly **no** -- RPV, nothing escapes; small residual MET from "
+                     "semileptonic top decays")),
+            notes=RPV_EWKINO_NOTES.format(m=m))
+        written.append(d)
+
+    for m, ctau in rpv_ewkino_disp_points():
+        name = "RPV_ewkino{0:g}_UDD_ctau{1:g}mm".format(m, ctau)
+        d = os.path.join(args.outdir, name)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "{0}_proc_card.dat".format(name)), "w") as fh:
+            fh.write(RPV_EWKINO_DISP_PROC_CARD)
+        # time_of_flight = 0 so MG5 writes the resonance lifetime into the LHE.
+        with open(os.path.join(d, "{0}_run_card.dat".format(name)), "w") as fh:
+            fh.write(rpv_run_card(time_of_flight="0.0"))
+        with open(os.path.join(d, "{0}_customizecards.dat".format(name)), "w") as fh:
+            fh.write(rpv_ewkino_disp_customize(m, ctau))
+        write_readme(
+            os.path.join(d, "README.md"),
+            name=name, sid="S5c (displaced RPV Higgsino, below the top threshold)",
+            mode="madgraph",
+            what=("Electroweak production of a near-degenerate Higgsino multiplet at "
+                  "{0:g} GeV -- **below the top threshold** -- decaying through "
+                  "lambda''_223 to c s b with a proper lifetime of **ctau = {1:g} mm**. "
+                  "Three jets per state, two of them heavy flavour, all emerging from a "
+                  "displaced vertex. No MET.\n\n"
+                  "This is the long-lived member of the S5b family: the same "
+                  "non-excluded electroweak production, but with the decay pushed "
+                  "off-vertex rather than prompt.").format(m, ctau),
+            config=("* Model `RPVMSSM_UFO`; decays in the **matrix element**\n"
+                    "* Production: `p p > n1 x1+`, `n1 x1-`, `x1+ x1-` -- electroweak\n"
+                    "* Multiplet at {0:g} GeV, everything else decoupled at 1 TeV\n"
+                    "* **lambda''_223 only** (c s b); all other RVLAMUDD entries zeroed\n"
+                    "* Width set to {1:.4e} GeV, i.e. ctau = {2:g} mm via "
+                    "ctau[mm] = 1.973e-13 / Gamma[GeV]\n"
+                    "* **run_card sets `time_of_flight = 0`** so MG5 writes the resonance "
+                    "lifetime (VTIMUP) into the LHE -- without this the displacement is "
+                    "silently lost\n"
+                    "* To scan the lifetime, change only the `1000022` width in the "
+                    "customizecards; the process directory does not need "
+                    "regenerating").format(m, CTAU_MM_TO_WIDTH / ctau, ctau),
+            menu=MENU.format(
+                ht="**likely no** -- HT_true = {0:.0f} GeV over six jets".format(2 * m),
+                jet="**no**", quad="verify", bph="no", mu44="no", ele="no",
+                pho="no", tau="no", met="**no** -- RPV, nothing escapes"),
+            notes=RPV_EWKINO_DISP_NOTES.format(m=m, c=ctau))
         written.append(d)
 
     build_readmes(args.outdir)
