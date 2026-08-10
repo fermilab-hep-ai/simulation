@@ -31,8 +31,54 @@ set param_card mass 2000005 1000
 set param_card mass 2000006 1000
 
 # lambda''_323 (t s b) only -- the third-generation operator a Higgsino can
-# actually use.  Every other RVLAMUDD entry is zeroed: the UFO ships 0.2 on all
-# of them, which would otherwise reopen the light-flavour modes.
+# actually use.  Every other RPV entry, in ALL THREE blocks, is zeroed: the UFO
+# ships 0.2 on all of them, which would otherwise reopen the light-flavour modes
+# and -- through lambda' (LQD) -- lepton and neutrino modes as well.
+set param_card rvlamlle 1 2 1 0.0
+set param_card rvlamlle 1 2 2 0.0
+set param_card rvlamlle 1 2 3 0.0
+set param_card rvlamlle 1 3 1 0.0
+set param_card rvlamlle 1 3 2 0.0
+set param_card rvlamlle 1 3 3 0.0
+set param_card rvlamlle 2 1 1 0.0
+set param_card rvlamlle 2 1 2 0.0
+set param_card rvlamlle 2 1 3 0.0
+set param_card rvlamlle 2 3 1 0.0
+set param_card rvlamlle 2 3 2 0.0
+set param_card rvlamlle 2 3 3 0.0
+set param_card rvlamlle 3 1 1 0.0
+set param_card rvlamlle 3 1 2 0.0
+set param_card rvlamlle 3 1 3 0.0
+set param_card rvlamlle 3 2 1 0.0
+set param_card rvlamlle 3 2 2 0.0
+set param_card rvlamlle 3 2 3 0.0
+set param_card rvlamlqd 1 1 1 0.0
+set param_card rvlamlqd 1 1 2 0.0
+set param_card rvlamlqd 1 1 3 0.0
+set param_card rvlamlqd 1 2 1 0.0
+set param_card rvlamlqd 1 2 2 0.0
+set param_card rvlamlqd 1 2 3 0.0
+set param_card rvlamlqd 1 3 1 0.0
+set param_card rvlamlqd 1 3 2 0.0
+set param_card rvlamlqd 1 3 3 0.0
+set param_card rvlamlqd 2 1 1 0.0
+set param_card rvlamlqd 2 1 2 0.0
+set param_card rvlamlqd 2 1 3 0.0
+set param_card rvlamlqd 2 2 1 0.0
+set param_card rvlamlqd 2 2 2 0.0
+set param_card rvlamlqd 2 2 3 0.0
+set param_card rvlamlqd 2 3 1 0.0
+set param_card rvlamlqd 2 3 2 0.0
+set param_card rvlamlqd 2 3 3 0.0
+set param_card rvlamlqd 3 1 1 0.0
+set param_card rvlamlqd 3 1 2 0.0
+set param_card rvlamlqd 3 1 3 0.0
+set param_card rvlamlqd 3 2 1 0.0
+set param_card rvlamlqd 3 2 2 0.0
+set param_card rvlamlqd 3 2 3 0.0
+set param_card rvlamlqd 3 3 1 0.0
+set param_card rvlamlqd 3 3 2 0.0
+set param_card rvlamlqd 3 3 3 0.0
 set param_card rvlamudd 1 1 2 0.0
 set param_card rvlamudd 1 1 3 0.0
 set param_card rvlamudd 1 2 1 0.0
@@ -47,6 +93,7 @@ set param_card rvlamudd 2 3 1 0.0
 set param_card rvlamudd 2 3 2 0.0
 set param_card rvlamudd 3 1 2 0.0
 set param_card rvlamudd 3 1 3 0.0
+set param_card rvlamudd 3 2 1 0.0
 set param_card rvlamudd 3 3 1 0.0
 
 # The surviving coupling and its antisymmetric partner.

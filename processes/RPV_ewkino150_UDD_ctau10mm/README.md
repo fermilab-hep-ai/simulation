@@ -8,7 +8,8 @@ This is the long-lived member of the S5b family: the same non-excluded electrowe
 
 ## Configuration
 
-* Model `RPVMSSM_UFO`; decays in the **matrix element**
+* Model `RPVMSSM_UFO_Wn1` (vendored in `models/`); the patch is what makes the lifetime below take effect at all -- see its PATCH_README.md
+* Decays in the **matrix element**
 * Production: `p p > n1 x1+`, `n1 x1-`, `x1+ x1-` -- electroweak
 * Multiplet at 150 GeV, everything else decoupled at 1 TeV
 * **lambda''_223 only** (c s b); all other RVLAMUDD entries zeroed

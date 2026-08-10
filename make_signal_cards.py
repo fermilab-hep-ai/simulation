@@ -444,12 +444,57 @@ Zprime:gmZmode = 3
 # MadGraph point: S5 stealth SUSY / light RPV cascade
 # ---------------------------------------------------------------------------
 
-RPV_PROC_CARD = """import model RPVMSSM_UFO
+# The squark decay is in the MATRIX ELEMENT, not the SLHA decay table.  Leaving
+# it to Pythia is what the first production test broke on: Pythia's RPV machinery
+# cannot read this UFO's decay table and aborted ~99% of events
+# ("unknown particle code", "charge not conserved"), leaving 9-12 events in a
+# 5000-event sample.
+#
+# READ THIS BEFORE TOUCHING THE PARTICLE NAMES.  MG5 names squarks purely from
+# their PDG code, but this UFO's USQMIX / DSQMIX order the mass eigenstates by
+# MASS, and with the shipped spectrum the stops and sbottoms are lightest.  The
+# MG5 name is therefore NOT the flavour:
+#
+#     MG5 name   PDG      actually is        MG5 name   PDG      actually is
+#     ur         2000002  u_R  <-- want      ul         1000002  stop_1
+#     t1         1000006  c_R  <-- want      cl         1000004  stop_2
+#     dr         2000001  d_R  <-- want      dl         1000001  sbottom_1
+#     b1         1000005  s_R  <-- want      sl         1000003  sbottom_2
+#     cr         2000004  u_L                sr         2000003  s_L
+#     t2         2000006  c_L                b2         2000005  d_L
+#
+# Verify with the mixing matrices, not the names:
+#     python3 -c "..." on USQMIX/DSQMIX in Cards/param_card.dat
+# Independent confirmation from the earlier tests: "BR(dl -> b n2) = 1.0" and
+# "BR(ul -> b x1+) = 0.26" are stop/sbottom decays, exactly as this table says.
+#
+# The old card's "define sq = ur ul cr cl dr dl sr sl" therefore pair-produced
+# two stops and two sbottoms, and of its eight states only ur and dr had an open
+# lambda'' decay -- the other six were STABLE COLOURED PARTICLES.
+#
+# lambda'' U^c D^c D^c couples only to RIGHT-HANDED (SU(2)-singlet) squarks, so
+# the four states below are the complete set that can decay through the operator.
+RPV_UDD_PROC_CARD = """import model _SIMDIR_/models/RPVMSSM_UFO_Wn1
 
-define sq = ur ul cr cl dr dl sr sl
-define sq~ = ur~ ul~ cr~ cl~ dr~ dl~ sr~ sl~
+# The four right-handed light-flavour squarks -- the only states the lambda''
+# UDD operator couples to.  NOTE: 't1' is c_R and 'b1' is s_R in this UFO; the
+# MG5 names come from PDG codes and do not match the flavour.  See the comment
+# block above make_signal_cards.py:RPV_UDD_PROC_CARD before editing this line.
+define sq = ur t1 dr b1
+define sq~ = ur~ t1~ dr~ b1~
 
-generate p p > sq sq~
+# lambda''_112 (u d s) and lambda''_212 (c d s) are the two entries switched on,
+# which is exactly what it takes to give all four squarks an open decay:
+#   u_R -> d~ s~     c_R -> d~ s~     d_R -> u~ s~, c~ s~     s_R -> u~ d~, c~ d~
+# Every mode is first/second generation, so there is no top and hence no real
+# MET -- the S5 design goal survives the wider coupling choice.
+define lq = u c d s
+define lq~ = u~ c~ d~ s~
+
+# Because EVERY open mode is in the matrix element, MG5's sigma = sigma_prod x
+# sum(Gamma_i)/Gamma_total = sigma_prod exactly.  Unlike the cascade points, the
+# cross section this point reports IS the production cross section.
+generate p p > sq sq~, (sq > lq~ lq~), (sq~ > lq lq)
 
 output _OUTDIR_
 """
@@ -472,6 +517,17 @@ def rpv_run_card(nevents_placeholder="_NEVENTS_", time_of_flight="-1.0"):
   RPV       = run_tag ! name of the run
   {nev} = nevents ! Number of unweighted events requested
   _ISEED_   = iseed   ! rnd seed (0=assigned automatically=default))
+#*********************************************************************
+# Integration strategy.  The decay-chain points put three narrow resonances
+# (two squarks / electroweakinos and two neutralinos) in an eight-body final
+# state.  With the MG5 defaults (sde_strategy = 1, hard_survey = 0) the cross
+# section converges but the unweighting efficiency does not: measured 210
+# events out of 5000 requested for RPV_squark300_cascade_LSP250, with MG5
+# itself printing "set sde_strategy to 2 / set hard_survey to 1 or 2".
+# These only change how phase space is sampled, not the physics.
+#*********************************************************************
+     2       = sde_strategy ! multi-channel over the full amplitude
+     1       = hard_survey  ! spend more time building the integration grids
      1        = lpp1    ! beam 1 type
      1        = lpp2    ! beam 2 type
      7000.0     = ebeam1  ! beam 1 total energy in GeV
@@ -616,6 +672,52 @@ def rpv_run_card(nevents_placeholder="_NEVENTS_", time_of_flight="-1.0"):
 """.format(nev=nevents_placeholder, tof=time_of_flight)
 
 
+# Every RPV coupling entry this UFO defines, by SLHA block.  Read off the model
+# with the lhablock / lhacode of each Parameter, so it cannot drift out of sync
+# by hand-maintenance.
+RVLAM_ENTRIES = {
+    "rvlamlle": [(i, j, k) for i in (1, 2, 3) for j in (1, 2, 3) for k in (1, 2, 3)
+                 if i != j],
+    "rvlamlqd": [(i, j, k) for i in (1, 2, 3) for j in (1, 2, 3) for k in (1, 2, 3)],
+    "rvlamudd": [(i, j, k) for i in (1, 2, 3) for j in (1, 2, 3) for k in (1, 2, 3)
+                 if j != k],
+}
+
+
+def rvlam_zero_block(keep):
+    """`set` lines zeroing every RPV coupling except those in `keep`.
+
+    The UFO ships **0.2 on every entry of all three blocks**, and only RVLAMUDD
+    was ever being zeroed.  Left alone, RVLAMLQD (lambda' L Q D) opens 18
+    lepton/neutrino modes on each squark -- d_R -> b nu_e, e- u, mu- c, tau- d
+    and so on -- at ~0.06 GeV each against ~0.0012 GeV for the UDD modes.  The
+    squark would then decay overwhelmingly to lepton + quark and neutrino +
+    quark, i.e. to exactly the MET and leptons that S5 is defined not to have,
+    and BR(UDD) would be a fraction of a percent rather than 1.
+
+    This is invisible while the widths sit under MG5's 0.1 GeV cut (it zeroes
+    them all and the total comes out 0), which is why it survived this long.
+    """
+    keep = set(keep)
+    lines = []
+    for block in ("rvlamlle", "rvlamlqd", "rvlamudd"):
+        for ijk in RVLAM_ENTRIES[block]:
+            if (block, ijk) not in keep:
+                lines.append("set param_card {0} {1} {2} {3} 0.0".format(block, *ijk))
+    return "\n".join(lines)
+
+
+# MG5 zeroes any partial width below 0.1 GeV for a coloured particle
+# (madgraph_interface.py: "partial width of particle %s lower than QCD scale").
+# At lambda'' = 1e-2 the squark UDD modes are 1.2 MeV, so compute_widths returned
+# a total width of exactly ZERO -- the same zero-width-propagator failure as the
+# neutralino bug, and the decay chain again unweighted 6 events out of 2000.
+# 0.2 (the UFO's own default) puts each partial width at ~0.48 GeV, clear of the
+# cut.  The value is otherwise physically irrelevant here: it cancels between the
+# partial and total widths, and the decay is prompt either way (c*tau ~ 1e-16 m).
+RPV_LAMBDA_UDD = 0.2
+
+
 def rpv_customize(m_squark):
     """
     Compressed RPV spectrum with lambda'' UDD decays.
@@ -627,24 +729,41 @@ def rpv_customize(m_squark):
     squark so squark pair production dominates.
     """
     heavy = m_squark + 200.0
-    return """# AIDA-Scout S5: compressed light-squark RPV UDD spectrum.
-# Right-handed up/charm/down/strange squarks degenerate at {m:g} GeV; everything
-# else decoupled so that p p > sq sq~ dominates and each squark decays via the
-# lambda'' UDD operator into two light quarks.
-set param_card mass 1000001 {m:g}
-set param_card mass 1000002 {m:g}
-set param_card mass 1000003 {m:g}
-set param_card mass 1000004 {m:g}
-set param_card mass 2000001 {m:g}
+    return """# AIDA-Scout S5: light right-handed squarks with prompt RPV UDD decays.
+#
+# THE PDG CODES BELOW ARE NOT THE FLAVOURS THEIR MG5 NAMES SUGGEST.  This UFO's
+# USQMIX / DSQMIX sort the squark mass eigenstates by mass, and with the shipped
+# spectrum the stops and sbottoms come first, so 1000001..1000004 are the
+# sbottoms and stops -- not the down/up/strange/charm squarks.  Setting them to
+# m_squark, as this card used to, put two stops and two sbottoms in the sample.
+# See the comment block above RPV_UDD_PROC_CARD in make_signal_cards.py.
+#
+# Light, at {m:g} GeV -- the four right-handed light-flavour squarks, the only
+# states the lambda'' UDD operator couples to.  Comments are kept on their own
+# lines: run.sh strips whole-line comments before feeding this to madevent, but
+# NOT trailing ones, and a trailing comment would be parsed as part of the value.
+#   2000002 = u_R (MG5 name 'ur')      1000006 = c_R (MG5 name 't1')
+#   2000001 = d_R (MG5 name 'dr')      1000005 = s_R (MG5 name 'b1')
 set param_card mass 2000002 {m:g}
-set param_card mass 2000003 {m:g}
-set param_card mass 2000004 {m:g}
+set param_card mass 1000006 {m:g}
+set param_card mass 2000001 {m:g}
+set param_card mass 1000005 {m:g}
 
-# Third generation squarks and the gluino out of reach.
-set param_card mass 1000005 {heavy:g}
-set param_card mass 1000006 {heavy:g}
-set param_card mass 2000005 {heavy:g}
+# Decoupled at {heavy:g} GeV -- the stops (1000002, 1000004) and sbottoms
+# (1000001, 1000003) ...
+set param_card mass 1000002 {heavy:g}
+set param_card mass 1000004 {heavy:g}
+set param_card mass 1000001 {heavy:g}
+set param_card mass 1000003 {heavy:g}
+
+# ... and the left-handed light-flavour squarks u_L (2000004), c_L (2000006),
+# d_L (2000005) and s_L (2000003), which carry no UDD coupling at all and would
+# otherwise be stable coloured particles.
+set param_card mass 2000004 {heavy:g}
 set param_card mass 2000006 {heavy:g}
+set param_card mass 2000005 {heavy:g}
+set param_card mass 2000003 {heavy:g}
+
 set param_card mass 1000021 {heavy:g}
 
 # Gauginos decoupled ABOVE the squark.  This is essential, not cosmetic: with
@@ -660,43 +779,38 @@ set param_card mass 1000025 {heavy:g}
 set param_card mass 1000035 {heavy:g}
 set param_card mass 1000037 {heavy:g}
 
-# lambda'' UDD couplings, block RVLAMUDD, indices ijk of lambda''_ijk U_i D_j D_k
-# (antisymmetric in the last two).
-#
-# The UFO ships **0.2 on every entry**, which is not a harmless default: leaving
-# it in place opens decays into the third generation, and a 300 GeV squark then
-# decays to a top (measured: modes -3 -6 and -5 -6 on the 2000001 squark). S5
-# calls for decays to *light* quarks, so every entry is zeroed first and only
-# lambda''_112 (u d s -- the sole combination with all indices in the first two
-# generations) is switched back on.
-set param_card rvlamudd 1 1 3 0.0
-set param_card rvlamudd 1 2 3 0.0
-set param_card rvlamudd 1 3 1 0.0
-set param_card rvlamudd 1 3 2 0.0
-set param_card rvlamudd 2 1 2 0.0
-set param_card rvlamudd 2 1 3 0.0
-set param_card rvlamudd 2 2 1 0.0
-set param_card rvlamudd 2 2 3 0.0
-set param_card rvlamudd 2 3 1 0.0
-set param_card rvlamudd 2 3 2 0.0
-set param_card rvlamudd 3 1 2 0.0
-set param_card rvlamudd 3 1 3 0.0
-set param_card rvlamudd 3 2 1 0.0
-set param_card rvlamudd 3 2 3 0.0
-set param_card rvlamudd 3 3 1 0.0
-set param_card rvlamudd 3 3 2 0.0
+# EVERY RPV coupling in ALL THREE blocks is zeroed first.  The UFO ships 0.2 on
+# all of them, and only RVLAMUDD used to be cleared -- leaving lambda' (LQD)
+# fully on, which gives each squark 18 lepton/neutrino modes (d_R -> b nu_e,
+# e- u, mu- c, ...) at roughly 50x the width of the UDD modes.  That is the MET
+# and the leptons S5 exists to avoid, and it drives BR(UDD) to well under 1%.
+{zero}
 
-# The only surviving coupling: u d s.  1e-2 keeps the decay prompt on detector
-# scales while leaving the squark narrow.
-set param_card rvlamudd 1 1 2 1.0e-2
-set param_card rvlamudd 1 2 1 -1.0e-2
+# lambda''_112 (u d s) opens u_R -> d s, d_R -> u s and s_R -> u d.  On its own
+# it leaves c_R with NO open decay -- a stable coloured particle in the event
+# record -- so lambda''_212 (c d s) is switched on as well; it is the lowest
+# operator that couples the charm squark.  Together:
+#     u_R -> d~ s~          c_R -> d~ s~
+#     d_R -> u~ s~, c~ s~   s_R -> u~ d~, c~ d~
+# Every index stays in the first two generations, so there is no top and no
+# genuine MET.  These are now the ONLY non-zero RPV couplings, so
+# BR(squark -> two quarks) = 1 exactly.
+set param_card rvlamudd 1 1 2 {lam:g}
+set param_card rvlamudd 1 2 1 -{lam:g}
+set param_card rvlamudd 2 1 2 {lam:g}
+set param_card rvlamudd 2 2 1 -{lam:g}
 
-# Recompute the squark widths so the RPV UDD channel is present in the decay
-# table that gets written into the LHE header and handed to Pythia.  Without
-# this the squarks inherit the UFO's default table and may not decay to
-# two quarks at all.
-compute_widths 1000001 1000002 1000003 1000004 2000001 2000002 2000003 2000004
-""".format(m=m_squark, heavy=heavy)
+# Recompute the widths of the four produced squarks.  This matters for the
+# normalisation, not just the decay table: MG5 forms
+# sigma = sigma_prod x sum(Gamma_i in the ME) / Gamma_total, so Gamma_total has
+# to be the consistently computed one for the reported cross section to be the
+# production cross section.
+compute_widths 2000002 1000006 2000001 1000005
+""".format(m=m_squark, heavy=heavy, lam=RPV_LAMBDA_UDD,
+           zero=rvlam_zero_block(keep=[("rvlamudd", (1, 1, 2)),
+                                       ("rvlamudd", (1, 2, 1)),
+                                       ("rvlamudd", (2, 1, 2)),
+                                       ("rvlamudd", (2, 2, 1))]))
 
 
 def rpv_points():
@@ -731,7 +845,12 @@ def rpv_points():
 # widths instead failed differently (invalid particle codes out of the RPV
 # machinery on this UFO).  Generating the decays in the matrix element sidesteps
 # both: the LHE is already fully decayed and no decay table is consulted.
-RPV_CASCADE_PROC_CARD = """import model RPVMSSM_UFO
+# RPVMSSM_UFO_Wn1, not the container's RPVMSSM_UFO: the stock model hardcodes
+# width = Param.ZERO for the neutralino, so 'set param_card decay 1000022 ...'
+# below is silently discarded, the n1 propagator in the decay chain loses its
+# regulator and the integration collapses (9 events out of 5000 requested for
+# the 120 GeV point).  See models/RPVMSSM_UFO_Wn1/PATCH_README.md.
+RPV_CASCADE_PROC_CARD = """import model _SIMDIR_/models/RPVMSSM_UFO_Wn1
 
 # Squark pair with the full cascade in the matrix element:
 #   ur     -> u  + n1,  n1 -> u  d  s     (lambda''_112 UDD)
@@ -774,10 +893,14 @@ set param_card mass 1000037 {h:g}
 # The LSP.
 set param_card mass 1000022 {y:g}
 
-# lambda''_112 only -- decays to light quarks, no third generation.  The UFO
-# ships 0.2 on every RVLAMUDD entry; the others are irrelevant here because the
-# matrix element only contains the 112 vertex, but the value still sets the
-# overall normalisation of the LSP decay.
+# Every RPV coupling zeroed, then lambda''_112 only -- decays to light quarks,
+# no third generation.  Zeroing RVLAMLQD and RVLAMLLE as well as RVLAMUDD matters
+# for the normalisation guidance below: the UFO ships 0.2 on all three blocks, so
+# with lambda' (LQD) left on the LSP also has lepton and neutrino channels and
+# BR(cascade) is NOT 1.  The generated events are unaffected either way -- the
+# matrix element contains only the cascade and the widths below are set by hand.
+{zero}
+
 set param_card rvlamudd 1 1 2 1.0e-2
 set param_card rvlamudd 1 2 1 -1.0e-2
 
@@ -799,7 +922,9 @@ set param_card rvlamudd 1 2 1 -1.0e-2
 set param_card decay 1000002 1.5
 set param_card decay 2000002 1.5
 set param_card decay 1000022 0.1
-""".format(m=m_squark, y=m_lsp, d=m_squark - m_lsp, h=heavy)
+""".format(m=m_squark, y=m_lsp, d=m_squark - m_lsp, h=heavy,
+           zero=rvlam_zero_block(keep=[("rvlamudd", (1, 1, 2)),
+                                       ("rvlamudd", (1, 2, 1))]))
 
 
 def rpv_cascade_points():
@@ -823,7 +948,9 @@ def rpv_cascade_points():
 # but the jet energies land better -- at m = 150 GeV the six jets average ~25 GeV
 # and therefore sit mostly BELOW the 30 GeV HT-constituent threshold, so the menu
 # HT is close to zero by construction.
-RPV_EWKINO_PROC_CARD = """import model RPVMSSM_UFO
+# Patched model -- see the comment on RPV_CASCADE_PROC_CARD and
+# models/RPVMSSM_UFO_Wn1/PATCH_README.md.  n1 is a decaying resonance here too.
+RPV_EWKINO_PROC_CARD = """import model _SIMDIR_/models/RPVMSSM_UFO_Wn1
 
 # Light Higgsino multiplet with RPV UDD decays through the THIRD generation.
 #
@@ -899,23 +1026,10 @@ set param_card mass 2000005 {h:g}
 set param_card mass 2000006 {h:g}
 
 # lambda''_323 (t s b) only -- the third-generation operator a Higgsino can
-# actually use.  Every other RVLAMUDD entry is zeroed: the UFO ships 0.2 on all
-# of them, which would otherwise reopen the light-flavour modes.
-set param_card rvlamudd 1 1 2 0.0
-set param_card rvlamudd 1 1 3 0.0
-set param_card rvlamudd 1 2 1 0.0
-set param_card rvlamudd 1 2 3 0.0
-set param_card rvlamudd 1 3 1 0.0
-set param_card rvlamudd 1 3 2 0.0
-set param_card rvlamudd 2 1 2 0.0
-set param_card rvlamudd 2 1 3 0.0
-set param_card rvlamudd 2 2 1 0.0
-set param_card rvlamudd 2 2 3 0.0
-set param_card rvlamudd 2 3 1 0.0
-set param_card rvlamudd 2 3 2 0.0
-set param_card rvlamudd 3 1 2 0.0
-set param_card rvlamudd 3 1 3 0.0
-set param_card rvlamudd 3 3 1 0.0
+# actually use.  Every other RPV entry, in ALL THREE blocks, is zeroed: the UFO
+# ships 0.2 on all of them, which would otherwise reopen the light-flavour modes
+# and -- through lambda' (LQD) -- lepton and neutrino modes as well.
+{zero}
 
 # The surviving coupling and its antisymmetric partner.
 set param_card rvlamudd 3 2 3 1.0e-2
@@ -927,7 +1041,9 @@ set param_card rvlamudd 3 3 2 -1.0e-2
 set param_card decay 1000022 1.0e-2
 set param_card decay 1000023 1.0e-2
 set param_card decay 1000024 1.0e-2
-""".format(m=m_ewkino, m1=m_ewkino + 1.0, h=heavy)
+""".format(m=m_ewkino, m1=m_ewkino + 1.0, h=heavy,
+           zero=rvlam_zero_block(keep=[("rvlamudd", (3, 2, 3)),
+                                       ("rvlamudd", (3, 3, 2))]))
 
 
 def rpv_ewkino_points():
@@ -958,7 +1074,11 @@ def rpv_ewkino_points():
 # this is the step most likely to fail silently.
 CTAU_MM_TO_WIDTH = 1.973e-13  # ctau[mm] = CTAU_MM_TO_WIDTH / Gamma[GeV]
 
-RPV_EWKINO_DISP_PROC_CARD = """import model RPVMSSM_UFO
+# Patched model -- see models/RPVMSSM_UFO_Wn1/PATCH_README.md.  This point needs
+# it twice over: the ctau = 10 mm lifetime is set as a width on 1000022
+# (Gamma = hbar c / ctau), which the stock model discards, so the sample came out
+# prompt as well as under-generated.
+RPV_EWKINO_DISP_PROC_CARD = """import model _SIMDIR_/models/RPVMSSM_UFO_Wn1
 
 # Displaced light Higgsino multiplet, below the top threshold.
 #
@@ -1013,25 +1133,10 @@ set param_card mass 2000004 {h:g}
 set param_card mass 2000005 {h:g}
 set param_card mass 2000006 {h:g}
 
-# lambda''_223 (c s b) only.  The UFO ships 0.2 on every RVLAMUDD entry, so all
-# the others are zeroed or the light-flavour and top modes reopen.
-set param_card rvlamudd 1 1 2 0.0
-set param_card rvlamudd 1 1 3 0.0
-set param_card rvlamudd 1 2 1 0.0
-set param_card rvlamudd 1 2 3 0.0
-set param_card rvlamudd 1 3 1 0.0
-set param_card rvlamudd 1 3 2 0.0
-set param_card rvlamudd 2 1 2 0.0
-set param_card rvlamudd 2 1 3 0.0
-set param_card rvlamudd 2 2 1 0.0
-set param_card rvlamudd 2 3 1 0.0
-set param_card rvlamudd 2 3 2 0.0
-set param_card rvlamudd 3 1 2 0.0
-set param_card rvlamudd 3 1 3 0.0
-set param_card rvlamudd 3 2 1 0.0
-set param_card rvlamudd 3 2 3 0.0
-set param_card rvlamudd 3 3 1 0.0
-set param_card rvlamudd 3 3 2 0.0
+# lambda''_223 (c s b) only.  The UFO ships 0.2 on every entry of all three RPV
+# blocks, so they are all zeroed first -- otherwise the light-flavour and top
+# modes reopen, and lambda' (LQD) adds lepton and neutrino channels on top.
+{zero}
 
 # The surviving coupling and its antisymmetric partner.
 set param_card rvlamudd 2 2 3 1.0e-2
@@ -1042,7 +1147,9 @@ set param_card rvlamudd 2 3 2 -1.0e-2
 set param_card decay 1000022 {w:.4e}
 set param_card decay 1000023 {w:.4e}
 set param_card decay 1000024 {w:.4e}
-""".format(m=m_ewkino, m1=m_ewkino + 1.0, h=heavy, c=ctau_mm, w=width)
+""".format(m=m_ewkino, m1=m_ewkino + 1.0, h=heavy, c=ctau_mm, w=width,
+           zero=rvlam_zero_block(keep=[("rvlamudd", (2, 2, 3)),
+                                       ("rvlamudd", (2, 3, 2))]))
 
 
 def rpv_ewkino_disp_points():
@@ -1329,67 +1436,120 @@ def build_readmes(outdir):
                   "light quarks. The result is a high-multiplicity all-hadronic event with "
                   "**no MET** -- a different menu failure mode from S1: high multiplicity "
                   "but *not* isotropic.").format(m),
-            config=("* Model: `RPVMSSM_UFO` (already present in the container's MG5 "
-                    "installation -- no download needed)\n"
-                    "* `generate p p > sq sq~` over the eight light-flavour squarks\n"
-                    "* m_squark = {0} GeV, gluino/gauginos/3rd generation decoupled at "
-                    "{1} GeV so squark pair production dominates and no MET is produced\n"
-                    "* lambda'' UDD couplings 1e-2 (prompt, but narrow)\n"
+            config=("* Model: `RPVMSSM_UFO_Wn1` (vendored in `models/`; see "
+                    "`models/RPVMSSM_UFO_Wn1/PATCH_README.md`)\n"
+                    "* `generate p p > sq sq~, (sq > lq~ lq~), (sq~ > lq lq)` over the "
+                    "**four right-handed** light-flavour squarks -- u_R, c_R, d_R, s_R -- "
+                    "which are the only states the lambda'' UDD operator couples to. The "
+                    "decay is in the matrix element, not the SLHA decay table\n"
+                    "* m_squark = {0} GeV; stops, sbottoms, the left-handed light-flavour "
+                    "squarks, the gluino and all gauginos decoupled at {1} GeV, so squark "
+                    "pair production dominates and no MET is produced\n"
+                    "* lambda''_112 (u d s) and lambda''_212 (c d s) at 0.2; **every other "
+                    "entry of all three RPV blocks** (RVLAMUDD, RVLAMLQD, RVLAMLLE) "
+                    "zeroed. Both couplings are needed: 112 alone leaves the charm squark "
+                    "with no open decay. All indices stay in the first two generations, so "
+                    "no top is produced and there is no genuine MET\n"
                     "* **run_card deviates from the repo convention:** `ickkw = 0`, "
                     "`xqcut = 0`, `ptj1min = 0`. The repo's standard cards ship "
                     "`ickkw = 1 / xqcut = 20 / ptj1min = 10`; specification section 4 "
                     "forbids MLM here and a 10 GeV leading-jet cut would bias a signal "
                     "whose jets are 10-30 GeV. **Conflict flagged rather than silently "
                     "followed, as requested.**\n"
-                    "* Cross section: taken from the MG5 run output (`run_01` banner)").format(
+                    "* Cross section: taken from the MG5 run output (`run_01` banner). "
+                    "Unlike the cascade points this number **is** usable -- every open "
+                    "decay mode is in the matrix element, so MG5's "
+                    "sigma_prod x sum(Gamma_i)/Gamma_total reduces to sigma_prod").format(
                         m, m + 200),
-            menu=MENU.format(ht="**borderline** -- verify per point; target is HT < 450",
-                             jet="no (target 10-30 GeV jets)", quad="**possibly** -- verify",
-                             bph="no", mu44="no", ele="no", pho="no", tau="no",
-                             met="no (RPV: no LSP escapes)"),
+            # Measured on the fixed 5000-event samples, not predicted.  These
+            # points are NOT menu-blind -- see the note under the table.
+            menu=MENU.format(
+                ht="**yes, {0}**".format("30.6%" if m == 300 else "93.4%"),
+                jet="**yes, {0}**".format("20.0%" if m == 300 else "75.9%"),
+                quad="not measured",
+                bph="no", mu44="no", ele="no", pho="no", tau="no",
+                met="no -- {0} over 200 GeV, and that tail is jet resolution at "
+                    "PU 200, not a real LSP".format("2.6%" if m == 300 else "17.5%"))
+            + ("\n**These rates are measured, and they say this point does not "
+               "evade the menu.** An earlier version of this table predicted "
+               "\"no\" for SinglePuppiJet and \"borderline\" for PuppiHT. With a "
+               "two-body decay the jets come out at m/2 -- measured leading-jet "
+               "medians are 153 GeV at m = 300 and 305 GeV at m = 600 -- so the "
+               "existing seeds see this signature. Use it as a *no-MET, "
+               "high-HT* benchmark, not as a menu-blind one; the "
+               "`RPV_squark*_cascade_*` points are the menu-blind ones.\n"),
             notes=("\n## Validation status\n\n"
-                   "**Partially validated. Do not use without the checks below.**\n\n"
-                   "What was confirmed on a 200-event test at m_squark = 300 GeV:\n\n"
-                   "* The `RPVMSSM_UFO` process builds (76 subprocesses) and integrates; "
-                   "sigma(p p > sq sq~) = **70.67 +- 0.13 pb** at m_squark = 300 GeV.\n"
-                   "* `set param_card mass ...` is accepted for the squarks (the mass "
-                   "block is an input in this UFO).\n"
-                   "* `compute_widths` does populate the RPV UDD channels: the squark "
-                   "decay table contains the two-quark modes `-3 -1`, `-5 -1`, `-5 -3`.\n\n"
-                   "What was found and fixed: with the UFO's default spectrum the "
-                   "neutralino sits near 100 GeV and the squarks decay mostly to "
-                   "q + neutralino/chargino -- `BR(dl -> b n2) = 1.0` and "
-                   "`BR(ul -> b x1+) = 0.26` were measured. That is exactly the MET S5 is "
-                   "supposed not to have. The customizecards now decouple all gauginos "
-                   "above the squark to close those channels.\n\n"
-                   "A second round of testing after the gaugino fix confirmed the squarks "
-                   "then decay **100% to two quarks with no neutralino/chargino channels** "
-                   "(sigma = 70.23 +- 0.12 pb), but exposed two further problems, now "
-                   "addressed in the customizecards and **not yet re-tested**:\n\n"
-                   "* The UFO ships lambda'' = 0.2 on *every* RVLAMUDD entry. That opened "
-                   "third-generation modes, and a 300 GeV squark was decaying to a **top "
-                   "quark** (`-3 -6`, `-5 -6`). All entries are now zeroed except "
-                   "lambda''_112.\n"
-                   "* With the gauginos decoupled, squarks that carry no UDD coupling have "
-                   "**no open channel at all**: `DECAY 1000001` came back with width "
-                   "exactly 0, i.e. a stable coloured particle. With only lambda''_112 on, "
-                   "only three squark flavours have an open decay.\n\n"
-                   "**Still to check before production:**\n\n"
-                   "1. Re-read the decay table and confirm no squark in the `sq` "
-                   "definition has zero width. If any still do, narrow the `define sq` "
-                   "line in the proc_card to only the flavours lambda''_112 actually "
-                   "couples to -- otherwise the sample contains stable coloured particles "
-                   "and is unusable.\n"
-                   "2. Confirm MET is genuinely small at reco level.\n"
-                   "3. The jet spectrum is the real physics question: a two-body decay at "
-                   "m_squark = {0} GeV gives jets of roughly m/2 = {1} GeV, which is "
-                   "**above** the 10-30 GeV target in the specification and may reach the "
-                   "HT 450 seed. This point currently produces 4 hard jets, not the "
-                   "'8-12 jets of 10-30 GeV' that S5 asks for. Getting there needs an "
-                   "intermediate near-degenerate state in the cascade so the visible "
-                   "energy is shared among more, softer jets -- i.e. a genuinely "
-                   "compressed spectrum rather than the direct 2-body decay used "
-                   "here.\n").format(m, m // 2))
+                   "Rebuilt after the 5000-event production test, which this point failed "
+                   "outright: only 9-12 events survived. Four independent defects, all "
+                   "fixed; the point now gives **5000/5000 events** with "
+                   "sigma = 29.83 +- 0.089 pb at m = 300 and 0.7839 +- 0.0016 pb at "
+                   "m = 600.\n\n"
+                   "### 1. The decay was left to Pythia, which cannot do it\n\n"
+                   "The original proc card was a bare `generate p p > sq sq~`, leaving the "
+                   "squark decay to Pythia's RPV/SLHA machinery. On this UFO that aborts "
+                   "about 99% of events:\n\n"
+                   "```\n"
+                   "  99  Abort from Pythia::next: parton+hadronLevel failed; giving up\n"
+                   "1938  Error in Pythia::check: unknown particle code\n"
+                   " 551  Error in Pythia::check: charge not conserved\n"
+                   "```\n\n"
+                   "The decay is now in the matrix element, as the cascade points do it.\n\n"
+                   "### 2. The MG5 particle names are not the flavours\n\n"
+                   "**This is the one to read before editing the cards.** MG5 names squarks "
+                   "from their PDG code, but this UFO's `USQMIX` / `DSQMIX` order the mass "
+                   "eigenstates by *mass*, and with the shipped spectrum the stops and "
+                   "sbottoms are lightest. So:\n\n"
+                   "| MG5 name | PDG | actually is | | MG5 name | PDG | actually is |\n"
+                   "|---|---|---|---|---|---|---|\n"
+                   "| `ur` | 2000002 | u_R | | `ul` | 1000002 | stop_1 |\n"
+                   "| `t1` | 1000006 | c_R | | `cl` | 1000004 | stop_2 |\n"
+                   "| `dr` | 2000001 | d_R | | `dl` | 1000001 | sbottom_1 |\n"
+                   "| `b1` | 1000005 | s_R | | `sl` | 1000003 | sbottom_2 |\n"
+                   "| `cr` | 2000004 | u_L | | `sr` | 2000003 | s_L |\n"
+                   "| `t2` | 2000006 | c_L | | `b2` | 2000005 | d_L |\n\n"
+                   "The old `define sq = ur ul cr cl dr dl sr sl`, described as 'the eight "
+                   "light-flavour squarks', therefore pair-produced **two stops and two "
+                   "sbottoms**; and because lambda'' couples only to right-handed squarks, "
+                   "only `ur` and `dr` had an open decay. The other six were **stable "
+                   "coloured particles**. Meanwhile `b1` and `t1` -- actually s_R and c_R, "
+                   "two of the states that *should* have been in the sample -- were being "
+                   "decoupled as 'third generation'.\n\n"
+                   "This also explains the earlier measurement recorded here, "
+                   "`BR(dl -> b n2) = 1.0` and `BR(ul -> b x1+) = 0.26`: those are textbook "
+                   "sbottom and stop decays, not a light squark decaying to MET. The "
+                   "gaugino decoupling that was added in response is still correct and is "
+                   "kept, but it was not treating the actual cause.\n\n"
+                   "The sample is now the four right-handed light-flavour squarks, u_R, "
+                   "c_R, d_R and s_R, degenerate at {0} GeV, with everything else at "
+                   "{2} GeV.\n\n"
+                   "### 3. lambda' (LQD) was never switched off\n\n"
+                   "The UFO ships 0.2 on every entry of **all three** RPV blocks, but only "
+                   "`RVLAMUDD` was being zeroed. `RVLAMLQD` was therefore left fully on, "
+                   "giving each squark 18 lepton and neutrino modes -- `d_R -> b nu_e`, "
+                   "`e- u`, `mu- c`, `tau- d` and so on -- at ~0.06 GeV each against "
+                   "~0.0012 GeV for the UDD modes actually wanted. The squark's real "
+                   "branching was therefore dominated by lepton + quark and neutrino + "
+                   "quark: precisely the MET and leptons this point is defined not to "
+                   "have. All three blocks are now zeroed before the two UDD entries are "
+                   "switched back on, so BR(squark -> two quarks) = 1 exactly.\n\n"
+                   "### 4. lambda'' raised from 1e-2 to 0.2\n\n"
+                   "MG5 discards any partial width below **0.1 GeV** for a coloured "
+                   "particle (`madgraph_interface.py`, \"partial width of particle ... "
+                   "lower than QCD scale\"). At lambda'' = 1e-2 the UDD modes are 1.2 MeV, "
+                   "so `compute_widths` returned a total width of exactly **zero** -- the "
+                   "same zero-width-propagator failure as the neutralino bug, and the decay "
+                   "chain again unweighted 6 events out of 2000. At 0.2 (the UFO's own "
+                   "default) each partial width is ~0.48 GeV, clear of the cut. The value "
+                   "is physically irrelevant here: it cancels between the partial and total "
+                   "widths, and the decay is prompt either way (c*tau ~ 1e-16 m).\n\n"
+                   "### Known limitation: this is not the S5 jet spectrum\n\n"
+                   "A two-body decay at m_squark = {0} GeV gives jets of roughly "
+                   "m/2 = {1} GeV, **above** the 10-30 GeV target, and the point yields "
+                   "4 hard jets rather than the '8-12 jets of 10-30 GeV' S5 asks for. That "
+                   "is what the `RPV_squark*_cascade_*` points were added for. This point "
+                   "is a clean *pair of dijet resonances with no MET*, which is a useful "
+                   "benchmark in its own right, but it should not be read as satisfying "
+                   "S5.\n").format(m, m // 2, m + 200))
 
 
 def other_flav(f):
@@ -1888,7 +2048,7 @@ def main():
         d = os.path.join(args.outdir, name)
         os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "{0}_proc_card.dat".format(name)), "w") as fh:
-            fh.write(RPV_PROC_CARD)
+            fh.write(RPV_UDD_PROC_CARD)
         with open(os.path.join(d, "{0}_run_card.dat".format(name)), "w") as fh:
             fh.write(rpv_run_card())
         with open(os.path.join(d, "{0}_customizecards.dat".format(name)), "w") as fh:
@@ -1914,7 +2074,10 @@ def main():
                   "light quarks through the lambda''_112 UDD operator. Eight partons at "
                   "the hard-process level, no MET, no isotropy -- the 'high multiplicity "
                   "but not isotropic' corner.").format(m, y),
-            config=("* Model `RPVMSSM_UFO`; the full cascade is in the **matrix element**, "
+            config=("* Model `RPVMSSM_UFO_Wn1` (vendored in `models/`, see its "
+                    "PATCH_README.md -- the stock model discards the neutralino "
+                    "width and the integration collapses without it); the full "
+                    "cascade is in the **matrix element**, "
                     "not in decay tables (see below)\n"
                     "* m_squark = {0:g} GeV, m_LSP = {1:g} GeV, splitting {2:g} GeV\n"
                     "* Only lambda''_112 is switched on, so the decays are to light quarks\n"
@@ -1955,7 +2118,8 @@ def main():
                   "`RPV_squark150_cascade_LSP100`. That point reproduces the target "
                   "signature but sits at a squark mass ruled out by existing LHC searches; "
                   "this one delivers a comparable topology at a mass that is not.").format(m),
-            config=("* Model `RPVMSSM_UFO`; electroweakino decays in the **matrix "
+            config=("* Model `RPVMSSM_UFO_Wn1` (vendored in `models/`, see its "
+                    "PATCH_README.md); electroweakino decays in the **matrix "
                     "element**, not decay tables (same reason as the squark cascade)\n"
                     "* Production: `p p > n1 x1+`, `n1 x1-`, `x1+ x1-` -- electroweak\n"
                     "* Multiplet at {0:g} GeV, everything else decoupled at 1 TeV\n"
@@ -2001,7 +2165,10 @@ def main():
                   "This is the long-lived member of the S5b family: the same "
                   "non-excluded electroweak production, but with the decay pushed "
                   "off-vertex rather than prompt.").format(m, ctau),
-            config=("* Model `RPVMSSM_UFO`; decays in the **matrix element**\n"
+            config=("* Model `RPVMSSM_UFO_Wn1` (vendored in `models/`); the patch is what "
+                    "makes the lifetime below take effect at all -- see its "
+                    "PATCH_README.md\n"
+                    "* Decays in the **matrix element**\n"
                     "* Production: `p p > n1 x1+`, `n1 x1-`, `x1+ x1-` -- electroweak\n"
                     "* Multiplet at {0:g} GeV, everything else decoupled at 1 TeV\n"
                     "* **lambda''_223 only** (c s b); all other RVLAMUDD entries zeroed\n"

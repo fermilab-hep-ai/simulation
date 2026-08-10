@@ -6,50 +6,76 @@ Pair production of degenerate light squarks at 600 GeV, each decaying through th
 
 ## Configuration
 
-* Model: `RPVMSSM_UFO` (already present in the container's MG5 installation -- no download needed)
-* `generate p p > sq sq~` over the eight light-flavour squarks
-* m_squark = 600 GeV, gluino/gauginos/3rd generation decoupled at 800 GeV so squark pair production dominates and no MET is produced
-* lambda'' UDD couplings 1e-2 (prompt, but narrow)
+* Model: `RPVMSSM_UFO_Wn1` (vendored in `models/`; see `models/RPVMSSM_UFO_Wn1/PATCH_README.md`)
+* `generate p p > sq sq~, (sq > lq~ lq~), (sq~ > lq lq)` over the **four right-handed** light-flavour squarks -- u_R, c_R, d_R, s_R -- which are the only states the lambda'' UDD operator couples to. The decay is in the matrix element, not the SLHA decay table
+* m_squark = 600 GeV; stops, sbottoms, the left-handed light-flavour squarks, the gluino and all gauginos decoupled at 800 GeV, so squark pair production dominates and no MET is produced
+* lambda''_112 (u d s) and lambda''_212 (c d s) at 0.2; **every other entry of all three RPV blocks** (RVLAMUDD, RVLAMLQD, RVLAMLLE) zeroed. Both couplings are needed: 112 alone leaves the charm squark with no open decay. All indices stay in the first two generations, so no top is produced and there is no genuine MET
 * **run_card deviates from the repo convention:** `ickkw = 0`, `xqcut = 0`, `ptj1min = 0`. The repo's standard cards ship `ickkw = 1 / xqcut = 20 / ptj1min = 10`; specification section 4 forbids MLM here and a 10 GeV leading-jet cut would bias a signal whose jets are 10-30 GeV. **Conflict flagged rather than silently followed, as requested.**
-* Cross section: taken from the MG5 run output (`run_01` banner)
+* Cross section: taken from the MG5 run output (`run_01` banner). Unlike the cascade points this number **is** usable -- every open decay mode is in the matrix element, so MG5's sigma_prod x sum(Gamma_i)/Gamma_total reduces to sigma_prod
 
 ## Why it evades (or does not evade) the Phase-2 L1 menu
 
 | Seed | Threshold | Fires? |
 |---|---|---|
-| PuppiHT | 450 (constituents pT > 30) | **borderline** -- verify per point; target is HT < 450 |
-| SinglePuppiJet | 230 | no (target 10-30 GeV jets) |
-| QuadJet | 400,70,55,40,40 | **possibly** -- verify |
+| PuppiHT | 450 (constituents pT > 30) | **yes, 93.4%** |
+| SinglePuppiJet | 230 | **yes, 75.9%** |
+| QuadJet | 400,70,55,40,40 | not measured |
 | DoubleTkMuon (BPH) | 2,2, abs(eta)<1.5, dR<1.4, OS, dz<1cm | no |
 | DoubleTkMuon (central) | 4,4 | no |
 | DoubleTkElectron | 25,12 | no |
 | DoubleTkIsoPhoton | 22,12 | no |
 | DoublePuppiTau | 52,52 | no |
-| PuppiETmiss | 200 | no (RPV: no LSP escapes) |
+| PuppiETmiss | 200 | no -- 17.5% over 200 GeV, and that tail is jet resolution at PU 200, not a real LSP |
+
+**These rates are measured, and they say this point does not evade the menu.** An earlier version of this table predicted "no" for SinglePuppiJet and "borderline" for PuppiHT. With a two-body decay the jets come out at m/2 -- measured leading-jet medians are 153 GeV at m = 300 and 305 GeV at m = 600 -- so the existing seeds see this signature. Use it as a *no-MET, high-HT* benchmark, not as a menu-blind one; the `RPV_squark*_cascade_*` points are the menu-blind ones.
 
 
 ## Validation status
 
-**Partially validated. Do not use without the checks below.**
+Rebuilt after the 5000-event production test, which this point failed outright: only 9-12 events survived. Four independent defects, all fixed; the point now gives **5000/5000 events** with sigma = 29.83 +- 0.089 pb at m = 300 and 0.7839 +- 0.0016 pb at m = 600.
 
-What was confirmed on a 200-event test at m_squark = 300 GeV:
+### 1. The decay was left to Pythia, which cannot do it
 
-* The `RPVMSSM_UFO` process builds (76 subprocesses) and integrates; sigma(p p > sq sq~) = **70.67 +- 0.13 pb** at m_squark = 300 GeV.
-* `set param_card mass ...` is accepted for the squarks (the mass block is an input in this UFO).
-* `compute_widths` does populate the RPV UDD channels: the squark decay table contains the two-quark modes `-3 -1`, `-5 -1`, `-5 -3`.
+The original proc card was a bare `generate p p > sq sq~`, leaving the squark decay to Pythia's RPV/SLHA machinery. On this UFO that aborts about 99% of events:
 
-What was found and fixed: with the UFO's default spectrum the neutralino sits near 100 GeV and the squarks decay mostly to q + neutralino/chargino -- `BR(dl -> b n2) = 1.0` and `BR(ul -> b x1+) = 0.26` were measured. That is exactly the MET S5 is supposed not to have. The customizecards now decouple all gauginos above the squark to close those channels.
+```
+  99  Abort from Pythia::next: parton+hadronLevel failed; giving up
+1938  Error in Pythia::check: unknown particle code
+ 551  Error in Pythia::check: charge not conserved
+```
 
-A second round of testing after the gaugino fix confirmed the squarks then decay **100% to two quarks with no neutralino/chargino channels** (sigma = 70.23 +- 0.12 pb), but exposed two further problems, now addressed in the customizecards and **not yet re-tested**:
+The decay is now in the matrix element, as the cascade points do it.
 
-* The UFO ships lambda'' = 0.2 on *every* RVLAMUDD entry. That opened third-generation modes, and a 300 GeV squark was decaying to a **top quark** (`-3 -6`, `-5 -6`). All entries are now zeroed except lambda''_112.
-* With the gauginos decoupled, squarks that carry no UDD coupling have **no open channel at all**: `DECAY 1000001` came back with width exactly 0, i.e. a stable coloured particle. With only lambda''_112 on, only three squark flavours have an open decay.
+### 2. The MG5 particle names are not the flavours
 
-**Still to check before production:**
+**This is the one to read before editing the cards.** MG5 names squarks from their PDG code, but this UFO's `USQMIX` / `DSQMIX` order the mass eigenstates by *mass*, and with the shipped spectrum the stops and sbottoms are lightest. So:
 
-1. Re-read the decay table and confirm no squark in the `sq` definition has zero width. If any still do, narrow the `define sq` line in the proc_card to only the flavours lambda''_112 actually couples to -- otherwise the sample contains stable coloured particles and is unusable.
-2. Confirm MET is genuinely small at reco level.
-3. The jet spectrum is the real physics question: a two-body decay at m_squark = 600 GeV gives jets of roughly m/2 = 300 GeV, which is **above** the 10-30 GeV target in the specification and may reach the HT 450 seed. This point currently produces 4 hard jets, not the '8-12 jets of 10-30 GeV' that S5 asks for. Getting there needs an intermediate near-degenerate state in the cascade so the visible energy is shared among more, softer jets -- i.e. a genuinely compressed spectrum rather than the direct 2-body decay used here.
+| MG5 name | PDG | actually is | | MG5 name | PDG | actually is |
+|---|---|---|---|---|---|---|
+| `ur` | 2000002 | u_R | | `ul` | 1000002 | stop_1 |
+| `t1` | 1000006 | c_R | | `cl` | 1000004 | stop_2 |
+| `dr` | 2000001 | d_R | | `dl` | 1000001 | sbottom_1 |
+| `b1` | 1000005 | s_R | | `sl` | 1000003 | sbottom_2 |
+| `cr` | 2000004 | u_L | | `sr` | 2000003 | s_L |
+| `t2` | 2000006 | c_L | | `b2` | 2000005 | d_L |
+
+The old `define sq = ur ul cr cl dr dl sr sl`, described as 'the eight light-flavour squarks', therefore pair-produced **two stops and two sbottoms**; and because lambda'' couples only to right-handed squarks, only `ur` and `dr` had an open decay. The other six were **stable coloured particles**. Meanwhile `b1` and `t1` -- actually s_R and c_R, two of the states that *should* have been in the sample -- were being decoupled as 'third generation'.
+
+This also explains the earlier measurement recorded here, `BR(dl -> b n2) = 1.0` and `BR(ul -> b x1+) = 0.26`: those are textbook sbottom and stop decays, not a light squark decaying to MET. The gaugino decoupling that was added in response is still correct and is kept, but it was not treating the actual cause.
+
+The sample is now the four right-handed light-flavour squarks, u_R, c_R, d_R and s_R, degenerate at 600 GeV, with everything else at 800 GeV.
+
+### 3. lambda' (LQD) was never switched off
+
+The UFO ships 0.2 on every entry of **all three** RPV blocks, but only `RVLAMUDD` was being zeroed. `RVLAMLQD` was therefore left fully on, giving each squark 18 lepton and neutrino modes -- `d_R -> b nu_e`, `e- u`, `mu- c`, `tau- d` and so on -- at ~0.06 GeV each against ~0.0012 GeV for the UDD modes actually wanted. The squark's real branching was therefore dominated by lepton + quark and neutrino + quark: precisely the MET and leptons this point is defined not to have. All three blocks are now zeroed before the two UDD entries are switched back on, so BR(squark -> two quarks) = 1 exactly.
+
+### 4. lambda'' raised from 1e-2 to 0.2
+
+MG5 discards any partial width below **0.1 GeV** for a coloured particle (`madgraph_interface.py`, "partial width of particle ... lower than QCD scale"). At lambda'' = 1e-2 the UDD modes are 1.2 MeV, so `compute_widths` returned a total width of exactly **zero** -- the same zero-width-propagator failure as the neutralino bug, and the decay chain again unweighted 6 events out of 2000. At 0.2 (the UFO's own default) each partial width is ~0.48 GeV, clear of the cut. The value is physically irrelevant here: it cancels between the partial and total widths, and the decay is prompt either way (c*tau ~ 1e-16 m).
+
+### Known limitation: this is not the S5 jet spectrum
+
+A two-body decay at m_squark = 600 GeV gives jets of roughly m/2 = 300 GeV, **above** the 10-30 GeV target, and the point yields 4 hard jets rather than the '8-12 jets of 10-30 GeV' S5 asks for. That is what the `RPV_squark*_cascade_*` points were added for. This point is a clean *pair of dijet resonances with no MET*, which is a useful benchmark in its own right, but it should not be read as satisfying S5.
 
 ## Running
 

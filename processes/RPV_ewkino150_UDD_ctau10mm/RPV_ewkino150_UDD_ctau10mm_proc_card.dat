@@ -1,4 +1,4 @@
-import model RPVMSSM_UFO
+import model _SIMDIR_/models/RPVMSSM_UFO_Wn1
 
 # Displaced light Higgsino multiplet, below the top threshold.
 #

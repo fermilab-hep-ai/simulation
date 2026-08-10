@@ -69,7 +69,10 @@ fi
 
 if [ "$gen_mode" = "madgraph" ]; then
   cp ${simdir}/processes/${proc}/${proc}_proc_card.dat tmpdir/proc_card.dat
-  sed -i -e "s@_OUTDIR_@tmpdir@g" tmpdir/proc_card.dat
+  # _SIMDIR_ lets a proc card import a UFO model vendored in this repository
+  # (models/), which the RPV points need -- see models/RPVMSSM_UFO_Wn1.
+  # Cards that do not use the placeholder are unaffected.
+  sed -i -e "s@_OUTDIR_@tmpdir@g" -e "s@_SIMDIR_@${simdir}@g" tmpdir/proc_card.dat
   /usr/local/MG5_aMC_v3_5_8/bin/mg5_aMC tmpdir/proc_card.dat
   ls -l tmpdir/bin/
   ls tmpdir/bin/madevent

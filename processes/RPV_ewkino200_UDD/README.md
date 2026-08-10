@@ -8,7 +8,7 @@ This is the **non-excluded companion** to `RPV_squark150_cascade_LSP100`. That p
 
 ## Configuration
 
-* Model `RPVMSSM_UFO`; electroweakino decays in the **matrix element**, not decay tables (same reason as the squark cascade)
+* Model `RPVMSSM_UFO_Wn1` (vendored in `models/`, see its PATCH_README.md); electroweakino decays in the **matrix element**, not decay tables (same reason as the squark cascade)
 * Production: `p p > n1 x1+`, `n1 x1-`, `x1+ x1-` -- electroweak
 * Multiplet at 200 GeV, everything else decoupled at 1 TeV
 * **lambda''_323 only** (t s b); every other RVLAMUDD entry zeroed, since the UFO ships 0.2 on all of them

@@ -24,10 +24,74 @@ set param_card mass 1000037 700
 # The LSP.
 set param_card mass 1000022 250
 
-# lambda''_112 only -- decays to light quarks, no third generation.  The UFO
-# ships 0.2 on every RVLAMUDD entry; the others are irrelevant here because the
-# matrix element only contains the 112 vertex, but the value still sets the
-# overall normalisation of the LSP decay.
+# Every RPV coupling zeroed, then lambda''_112 only -- decays to light quarks,
+# no third generation.  Zeroing RVLAMLQD and RVLAMLLE as well as RVLAMUDD matters
+# for the normalisation guidance below: the UFO ships 0.2 on all three blocks, so
+# with lambda' (LQD) left on the LSP also has lepton and neutrino channels and
+# BR(cascade) is NOT 1.  The generated events are unaffected either way -- the
+# matrix element contains only the cascade and the widths below are set by hand.
+set param_card rvlamlle 1 2 1 0.0
+set param_card rvlamlle 1 2 2 0.0
+set param_card rvlamlle 1 2 3 0.0
+set param_card rvlamlle 1 3 1 0.0
+set param_card rvlamlle 1 3 2 0.0
+set param_card rvlamlle 1 3 3 0.0
+set param_card rvlamlle 2 1 1 0.0
+set param_card rvlamlle 2 1 2 0.0
+set param_card rvlamlle 2 1 3 0.0
+set param_card rvlamlle 2 3 1 0.0
+set param_card rvlamlle 2 3 2 0.0
+set param_card rvlamlle 2 3 3 0.0
+set param_card rvlamlle 3 1 1 0.0
+set param_card rvlamlle 3 1 2 0.0
+set param_card rvlamlle 3 1 3 0.0
+set param_card rvlamlle 3 2 1 0.0
+set param_card rvlamlle 3 2 2 0.0
+set param_card rvlamlle 3 2 3 0.0
+set param_card rvlamlqd 1 1 1 0.0
+set param_card rvlamlqd 1 1 2 0.0
+set param_card rvlamlqd 1 1 3 0.0
+set param_card rvlamlqd 1 2 1 0.0
+set param_card rvlamlqd 1 2 2 0.0
+set param_card rvlamlqd 1 2 3 0.0
+set param_card rvlamlqd 1 3 1 0.0
+set param_card rvlamlqd 1 3 2 0.0
+set param_card rvlamlqd 1 3 3 0.0
+set param_card rvlamlqd 2 1 1 0.0
+set param_card rvlamlqd 2 1 2 0.0
+set param_card rvlamlqd 2 1 3 0.0
+set param_card rvlamlqd 2 2 1 0.0
+set param_card rvlamlqd 2 2 2 0.0
+set param_card rvlamlqd 2 2 3 0.0
+set param_card rvlamlqd 2 3 1 0.0
+set param_card rvlamlqd 2 3 2 0.0
+set param_card rvlamlqd 2 3 3 0.0
+set param_card rvlamlqd 3 1 1 0.0
+set param_card rvlamlqd 3 1 2 0.0
+set param_card rvlamlqd 3 1 3 0.0
+set param_card rvlamlqd 3 2 1 0.0
+set param_card rvlamlqd 3 2 2 0.0
+set param_card rvlamlqd 3 2 3 0.0
+set param_card rvlamlqd 3 3 1 0.0
+set param_card rvlamlqd 3 3 2 0.0
+set param_card rvlamlqd 3 3 3 0.0
+set param_card rvlamudd 1 1 3 0.0
+set param_card rvlamudd 1 2 3 0.0
+set param_card rvlamudd 1 3 1 0.0
+set param_card rvlamudd 1 3 2 0.0
+set param_card rvlamudd 2 1 2 0.0
+set param_card rvlamudd 2 1 3 0.0
+set param_card rvlamudd 2 2 1 0.0
+set param_card rvlamudd 2 2 3 0.0
+set param_card rvlamudd 2 3 1 0.0
+set param_card rvlamudd 2 3 2 0.0
+set param_card rvlamudd 3 1 2 0.0
+set param_card rvlamudd 3 1 3 0.0
+set param_card rvlamudd 3 2 1 0.0
+set param_card rvlamudd 3 2 3 0.0
+set param_card rvlamudd 3 3 1 0.0
+set param_card rvlamudd 3 3 2 0.0
+
 set param_card rvlamudd 1 1 2 1.0e-2
 set param_card rvlamudd 1 2 1 -1.0e-2
 

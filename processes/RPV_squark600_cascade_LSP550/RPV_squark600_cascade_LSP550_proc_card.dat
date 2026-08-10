@@ -1,4 +1,4 @@
-import model RPVMSSM_UFO
+import model _SIMDIR_/models/RPVMSSM_UFO_Wn1
 
 # Squark pair with the full cascade in the matrix element:
 #   ur     -> u  + n1,  n1 -> u  d  s     (lambda''_112 UDD)

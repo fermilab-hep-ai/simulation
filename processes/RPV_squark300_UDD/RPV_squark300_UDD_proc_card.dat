@@ -1,8 +1,23 @@
-import model RPVMSSM_UFO
+import model _SIMDIR_/models/RPVMSSM_UFO_Wn1
 
-define sq = ur ul cr cl dr dl sr sl
-define sq~ = ur~ ul~ cr~ cl~ dr~ dl~ sr~ sl~
+# The four right-handed light-flavour squarks -- the only states the lambda''
+# UDD operator couples to.  NOTE: 't1' is c_R and 'b1' is s_R in this UFO; the
+# MG5 names come from PDG codes and do not match the flavour.  See the comment
+# block above make_signal_cards.py:RPV_UDD_PROC_CARD before editing this line.
+define sq = ur t1 dr b1
+define sq~ = ur~ t1~ dr~ b1~
 
-generate p p > sq sq~
+# lambda''_112 (u d s) and lambda''_212 (c d s) are the two entries switched on,
+# which is exactly what it takes to give all four squarks an open decay:
+#   u_R -> d~ s~     c_R -> d~ s~     d_R -> u~ s~, c~ s~     s_R -> u~ d~, c~ d~
+# Every mode is first/second generation, so there is no top and hence no real
+# MET -- the S5 design goal survives the wider coupling choice.
+define lq = u c d s
+define lq~ = u~ c~ d~ s~
+
+# Because EVERY open mode is in the matrix element, MG5's sigma = sigma_prod x
+# sum(Gamma_i)/Gamma_total = sigma_prod exactly.  Unlike the cascade points, the
+# cross section this point reports IS the production cross section.
+generate p p > sq sq~, (sq > lq~ lq~), (sq~ > lq lq)
 
 output _OUTDIR_

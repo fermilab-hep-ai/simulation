@@ -31,8 +31,54 @@ set param_card mass 2000004 1000
 set param_card mass 2000005 1000
 set param_card mass 2000006 1000
 
-# lambda''_223 (c s b) only.  The UFO ships 0.2 on every RVLAMUDD entry, so all
-# the others are zeroed or the light-flavour and top modes reopen.
+# lambda''_223 (c s b) only.  The UFO ships 0.2 on every entry of all three RPV
+# blocks, so they are all zeroed first -- otherwise the light-flavour and top
+# modes reopen, and lambda' (LQD) adds lepton and neutrino channels on top.
+set param_card rvlamlle 1 2 1 0.0
+set param_card rvlamlle 1 2 2 0.0
+set param_card rvlamlle 1 2 3 0.0
+set param_card rvlamlle 1 3 1 0.0
+set param_card rvlamlle 1 3 2 0.0
+set param_card rvlamlle 1 3 3 0.0
+set param_card rvlamlle 2 1 1 0.0
+set param_card rvlamlle 2 1 2 0.0
+set param_card rvlamlle 2 1 3 0.0
+set param_card rvlamlle 2 3 1 0.0
+set param_card rvlamlle 2 3 2 0.0
+set param_card rvlamlle 2 3 3 0.0
+set param_card rvlamlle 3 1 1 0.0
+set param_card rvlamlle 3 1 2 0.0
+set param_card rvlamlle 3 1 3 0.0
+set param_card rvlamlle 3 2 1 0.0
+set param_card rvlamlle 3 2 2 0.0
+set param_card rvlamlle 3 2 3 0.0
+set param_card rvlamlqd 1 1 1 0.0
+set param_card rvlamlqd 1 1 2 0.0
+set param_card rvlamlqd 1 1 3 0.0
+set param_card rvlamlqd 1 2 1 0.0
+set param_card rvlamlqd 1 2 2 0.0
+set param_card rvlamlqd 1 2 3 0.0
+set param_card rvlamlqd 1 3 1 0.0
+set param_card rvlamlqd 1 3 2 0.0
+set param_card rvlamlqd 1 3 3 0.0
+set param_card rvlamlqd 2 1 1 0.0
+set param_card rvlamlqd 2 1 2 0.0
+set param_card rvlamlqd 2 1 3 0.0
+set param_card rvlamlqd 2 2 1 0.0
+set param_card rvlamlqd 2 2 2 0.0
+set param_card rvlamlqd 2 2 3 0.0
+set param_card rvlamlqd 2 3 1 0.0
+set param_card rvlamlqd 2 3 2 0.0
+set param_card rvlamlqd 2 3 3 0.0
+set param_card rvlamlqd 3 1 1 0.0
+set param_card rvlamlqd 3 1 2 0.0
+set param_card rvlamlqd 3 1 3 0.0
+set param_card rvlamlqd 3 2 1 0.0
+set param_card rvlamlqd 3 2 2 0.0
+set param_card rvlamlqd 3 2 3 0.0
+set param_card rvlamlqd 3 3 1 0.0
+set param_card rvlamlqd 3 3 2 0.0
+set param_card rvlamlqd 3 3 3 0.0
 set param_card rvlamudd 1 1 2 0.0
 set param_card rvlamudd 1 1 3 0.0
 set param_card rvlamudd 1 2 1 0.0
@@ -43,7 +89,6 @@ set param_card rvlamudd 2 1 2 0.0
 set param_card rvlamudd 2 1 3 0.0
 set param_card rvlamudd 2 2 1 0.0
 set param_card rvlamudd 2 3 1 0.0
-set param_card rvlamudd 2 3 2 0.0
 set param_card rvlamudd 3 1 2 0.0
 set param_card rvlamudd 3 1 3 0.0
 set param_card rvlamudd 3 2 1 0.0

@@ -6,7 +6,7 @@ Pair production of 300 GeV right-handed up squarks, each decaying to a quark plu
 
 ## Configuration
 
-* Model `RPVMSSM_UFO`; the full cascade is in the **matrix element**, not in decay tables (see below)
+* Model `RPVMSSM_UFO_Wn1` (vendored in `models/`, see its PATCH_README.md -- the stock model discards the neutralino width and the integration collapses without it); the full cascade is in the **matrix element**, not in decay tables (see below)
 * m_squark = 300 GeV, m_LSP = 250 GeV, splitting 50 GeV
 * Only lambda''_112 is switched on, so the decays are to light quarks
 * Gluino, third generation and the heavier gauginos decoupled at 700 GeV

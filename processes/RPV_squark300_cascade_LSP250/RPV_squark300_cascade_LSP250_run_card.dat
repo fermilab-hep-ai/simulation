@@ -5,6 +5,17 @@
   RPV       = run_tag ! name of the run
   _NEVENTS_ = nevents ! Number of unweighted events requested
   _ISEED_   = iseed   ! rnd seed (0=assigned automatically=default))
+#*********************************************************************
+# Integration strategy.  The decay-chain points put three narrow resonances
+# (two squarks / electroweakinos and two neutralinos) in an eight-body final
+# state.  With the MG5 defaults (sde_strategy = 1, hard_survey = 0) the cross
+# section converges but the unweighting efficiency does not: measured 210
+# events out of 5000 requested for RPV_squark300_cascade_LSP250, with MG5
+# itself printing "set sde_strategy to 2 / set hard_survey to 1 or 2".
+# These only change how phase space is sampled, not the physics.
+#*********************************************************************
+     2       = sde_strategy ! multi-channel over the full amplitude
+     1       = hard_survey  ! spend more time building the integration grids
      1        = lpp1    ! beam 1 type
      1        = lpp2    ! beam 2 type
      7000.0     = ebeam1  ! beam 1 total energy in GeV

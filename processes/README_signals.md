@@ -84,7 +84,7 @@ MET, not isotropic.
 
 | Points | Description |
 |---|---|
-| `RPV_squark{300,600}_UDD` | Squark pair production, direct two-body decay to two quarks — 4 jets |
+| `RPV_squark{300,600}_UDD` | Pair production of the four right-handed light-flavour squarks, direct two-body decay to two quarks — 4 jets, no MET |
 | `RPV_squark{300,600,150,120}_cascade_LSP{250,550,100,90}` | Squark pair with a cascade `q̃ → q χ̃⁰₁`, `χ̃⁰₁ → qqq` — 8 partons. The 150/100 point gives ~9 jets above 10 GeV |
 | `RPV_ewkino{200,300}_UDD` | Electroweak Higgsino production, `χ̃ → t s b` via λ″₃₂₃ — ~7 jets, several b-tagged |
 | `RPV_ewkino150_UDD_ctau10mm` | Higgsino below the top threshold decaying via λ″₂₂₃ to `c s b` with cτ = 10 mm — ~6 displaced jets |
@@ -93,6 +93,29 @@ The light squark points (120, 150 GeV) are chosen to reach the target jet
 multiplicity and energy; those masses are excluded by existing LHC searches, so
 they are signature benchmarks rather than viable model points. The Higgsino
 points are the non-excluded counterparts.
+
+**These points need the patched UFO in `models/RPVMSSM_UFO_Wn1`, not the
+container's `RPVMSSM_UFO`.** The stock model hardcodes `width = Param.ZERO` for
+the neutralino, so `set param_card decay 1000022 ...` in a customizecards file
+is silently discarded. The `n1` propagator in the decay chain then has no
+regulator, the integration does not converge, and MadGraph unweights only a
+handful of events -- measured at 9, 5 and 11 out of 5000 requested for the 120,
+300 and 600 GeV cascade points. For `RPV_ewkino150_UDD_ctau10mm` the discarded
+width is also what encodes the lifetime, so that point came out prompt. The
+proc cards reference the patched model through the `_SIMDIR_` placeholder that
+`run.sh` substitutes. See `models/RPVMSSM_UFO_Wn1/PATCH_README.md`.
+
+**In this UFO the MG5 particle name is not the squark flavour.** MG5 names
+squarks from their PDG code, but `USQMIX` / `DSQMIX` here order the mass
+eigenstates by *mass*, and with the shipped spectrum the stops and sbottoms are
+lightest. So `ul`/`cl` are the two stops, `dl`/`sl` are the two sbottoms, and
+the states you actually want are `ur` = ũ_R, `t1` = c̃_R, `dr` = d̃_R,
+`b1` = s̃_R. The `*_UDD` proc cards previously read
+`define sq = ur ul cr cl dr dl sr sl`, described as "the eight light-flavour
+squarks"; that set really pair-produced two stops and two sbottoms, and since
+λ″ couples only to right-handed squarks, six of the eight had **no open decay at
+all** — stable coloured particles. Check the mixing matrices, not the names,
+before editing these cards.
 
 ## Reference / control samples (1 point)
 
