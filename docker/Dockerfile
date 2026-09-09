@@ -184,7 +184,7 @@ RUN mkdir /code && \
 # Install PYTHIA
 RUN mkdir /code && \
     cd /code && \
-    wget --no-check-certificate "https://pythia.org/download/pythia${PYTHIA_VERSION:0:2}/pythia${PYTHIA_VERSION}.tgz" && \
+    wget --no-check-certificate "https://pythia.org/releases/pythia${PYTHIA_VERSION:0:2}/pythia${PYTHIA_VERSION}.tgz" && \
     tar xvfz pythia${PYTHIA_VERSION}.tgz && \
     cd pythia${PYTHIA_VERSION} && \
     ./configure --help && \
