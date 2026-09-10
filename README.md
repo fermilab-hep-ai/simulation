@@ -21,6 +21,17 @@ The Docker image can be rebuilt manually if needed by doing
 docker build . -f docker/Dockerfile -t jmduarte/mapyde
 ```
 
+The image is published for both `linux/amd64` and `linux/arm64`, so on an Apple
+Silicon Mac `docker pull jmduarte/mapyde:latest` gets you a native image with no
+emulation. To build it yourself for a specific architecture:
+```bash
+docker build . -f docker/Dockerfile --platform linux/arm64 -t jmduarte/mapyde
+```
+Note that ROOT publishes binary tarballs for `x86_64` only, so an `arm64` build
+compiles ROOT from source and takes considerably longer than an `amd64` one. If
+you would rather not wait, you can run the `amd64` image under emulation instead
+with `--platform linux/amd64`, at a significant runtime performance cost.
+
 ### Running sample generation locally
 Finally, run the `run.sh` command with the Docker image
 ```bash
