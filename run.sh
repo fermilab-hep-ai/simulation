@@ -34,14 +34,31 @@ if [ ! -d ${simdir}/processes/${proc} ]; then
   exit 1
 fi
 
-if [ ! -e ${simdir}/processes/${proc}/${proc}_proc_card.dat ]; then
-  echo ${simdir}/processes/${proc}/${proc}_proc_card.dat " does not exist!"
-  exit 1
+# Two generation modes are supported:
+#   madgraph : MG5 hard process -> Pythia8 -> Delphes  (driven by madevent)
+#              requires ${proc}_proc_card.dat and ${proc}_run_card.dat
+#   pythia   : Pythia8-only hard process -> HepMC -> DelphesHepMC2
+#              requires ${proc}_pythia_card.dat
+# The pythia mode exists because several signals (Hidden Valley dark showers,
+# Higgs-portal, Z') are generated entirely inside Pythia, and because the
+# container ships DelphesHepMC2 but no DelphesPythia8 binary.
+if [ -e ${simdir}/processes/${proc}/${proc}_pythia_card.dat ]; then
+  gen_mode=pythia
+else
+  gen_mode=madgraph
 fi
+echo "generation mode: ${gen_mode}"
 
-if [ ! -e ${simdir}/processes/${proc}/${proc}_run_card.dat ]; then
-  echo ${simdir}/processes/${proc}/${proc}_run_card.dat " does not exist!"
-  exit 1
+if [ "$gen_mode" = "madgraph" ]; then
+  if [ ! -e ${simdir}/processes/${proc}/${proc}_proc_card.dat ]; then
+    echo ${simdir}/processes/${proc}/${proc}_proc_card.dat " does not exist!"
+    exit 1
+  fi
+
+  if [ ! -e ${simdir}/processes/${proc}/${proc}_run_card.dat ]; then
+    echo ${simdir}/processes/${proc}/${proc}_run_card.dat " does not exist!"
+    exit 1
+  fi
 fi
 
 
@@ -50,17 +67,24 @@ if [ "$is_test" = "True" ]; then
     start_time_madgraph="$(date -u +%s)"
 fi
 
-cp ${simdir}/processes/${proc}/${proc}_proc_card.dat tmpdir/proc_card.dat
-sed -i -e "s@_OUTDIR_@tmpdir@g" tmpdir/proc_card.dat
-/usr/local/MG5_aMC_v3_5_8/bin/mg5_aMC tmpdir/proc_card.dat
-ls -l tmpdir/bin/
-ls tmpdir/bin/madevent
+if [ "$gen_mode" = "madgraph" ]; then
+  cp ${simdir}/processes/${proc}/${proc}_proc_card.dat tmpdir/proc_card.dat
+  # _SIMDIR_ lets a proc card import a UFO model vendored in this repository
+  # (models/), which the RPV points need -- see models/RPVMSSM_UFO_Wn1.
+  # Cards that do not use the placeholder are unaffected.
+  sed -i -e "s@_OUTDIR_@tmpdir@g" -e "s@_SIMDIR_@${simdir}@g" tmpdir/proc_card.dat
+  /usr/local/MG5_aMC_v3_5_8/bin/mg5_aMC tmpdir/proc_card.dat
+  ls -l tmpdir/bin/
+  ls tmpdir/bin/madevent
+fi
 if [ "$is_test" = "True" ]; then
     end_time_madgraph="$(date -u +%s)"
 fi
 # write run cards
 cp ${simdir}/cards/* tmpdir/Cards/
-cp ${simdir}/processes/${proc}/${proc}_run_card.dat tmpdir/Cards/run_card.dat
+if [ "$gen_mode" = "madgraph" ]; then
+  cp ${simdir}/processes/${proc}/${proc}_run_card.dat tmpdir/Cards/run_card.dat
+fi
 if [ -e ${simdir}/processes/${proc}/${proc}_cuts.f ]; then
   echo "copying custom cuts.f file"
   cp ${simdir}/processes/${proc}/${proc}_cuts.f tmpdir/SubProcesses/cuts.f
@@ -117,8 +141,25 @@ if [ -e ${simdir}/main43.cc ]; then
       -I/usr/local/include/Pythia8 -L/usr/local/lib -lpythia8 \
       -I/usr/local/include/HepMC -L/usr/local/lib -lHepMC \
       -ldl -std=c++11
-  LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH ./tmpdir/QCD/main43 PileUp_MC ${seed}
+  # PYTHIA8DATA is pinned to the container's copy.  Without it, a PYTHIA8DATA
+  # already set in the caller's environment (e.g. pointing at a local MG5
+  # HEPTools install) is inherited by the container and Pythia aborts with
+  # "settings file ... not found", leaving an empty pileup file behind.
+  LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH \
+  PYTHIA8DATA=/usr/local/share/Pythia8/xmldoc \
+    ./tmpdir/QCD/main43 PileUp_MC ${seed}
   /usr/local/share/delphes/Delphes-3.5.0/hepmc2pileup tmpdir/QCD/results/SoftQCD.pileup tmpdir/QCD/results/hepmcout_SoftQCD_MC_${seed}.data
+
+  # Fail loudly if the pileup is empty.  Delphes does not error on an empty
+  # pileup file -- PileUpMerger simply never finds the 200 vertices it wants and
+  # the job hangs at 0% indefinitely, which is very hard to diagnose from logs.
+  if [ ! -s tmpdir/QCD/results/SoftQCD.pileup ] || \
+     [ ! -s tmpdir/QCD/results/hepmcout_SoftQCD_MC_${seed}.data ]; then
+    echo "ERROR: pileup generation produced an empty file; aborting rather than"
+    echo "       letting Delphes hang. Check the main43 output above."
+    ls -l tmpdir/QCD/results/
+    exit 10
+  fi
 fi
 
 # Bring in extra user commands, stripping blank lines & comments
@@ -138,7 +179,9 @@ echo "done" >> tmpdir/Cards/launchrun.dat
 # change delphes source code delphes/external/PUPPI/PuppiContainer.cc and replace if(pWeight == 0) continue; with //if(pWeight == 0) continue;
 # sed -i -e "s@if(pWeight == 0) continue;@//if(pWeight == 0) continue;@g" /usr/local/share/delphes/Delphes-3.5.0/external/PUPPI/PuppiContainer.cc
 
-sed -i -e "s@_NEVENTS_@$nevts@g" tmpdir/Cards/run_card.dat
+if [ "$gen_mode" = "madgraph" ]; then
+  sed -i -e "s@_NEVENTS_@$nevts@g" tmpdir/Cards/run_card.dat
+fi
 ## Using 100k pileup file ##
 #sed -i -e "s@_PileUpFile_@$simdir/MinBias_100k.pileup@g" tmpdir/Cards/delphes_card.dat
 
@@ -151,15 +194,79 @@ sed -i -e "s@_PileUpFile_@$workdir/tmpdir/QCD/results/SoftQCD.pileup@g" tmpdir/C
 sed -
 echo xxxxxxxxx
 cat tmpdir/Cards/delphes_card.dat
-sed -i -e "s@_ISEED_@$seed@g" tmpdir/Cards/run_card.dat
+if [ "$gen_mode" = "madgraph" ]; then
+  sed -i -e "s@_ISEED_@$seed@g" tmpdir/Cards/run_card.dat
+fi
 
 if [ "$is_test" = "True" ]; then
     start_time_pythia_delphes="$(date -u +%s)"
 fi
-tmpdir/bin/madevent tmpdir/Cards/launchrun.dat
 
-echo "Contents of Events/ after madevent:"
-ls -R tmpdir/Events
+if [ "$gen_mode" = "madgraph" ]; then
+  tmpdir/bin/madevent tmpdir/Cards/launchrun.dat
+
+  echo "Contents of Events/ after madevent:"
+  ls -R tmpdir/Events
+else
+  # ------------------------------------------------------------------
+  # Pythia8-only generation: build the standalone driver, run it to HepMC,
+  # then hand the HepMC to Delphes with the same card / same pileup file
+  # that the madgraph path uses.
+  # ------------------------------------------------------------------
+  mkdir -p tmpdir/Events/run_01
+
+  PYTHIA8=/usr/local HEPMC_DIR=/usr/local LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH \
+    g++ -o tmpdir/main_signal ${simdir}/main_signal.cc \
+        -I/usr/local/include/Pythia8 -L/usr/local/lib -lpythia8 \
+        -I/usr/local/include/HepMC -L/usr/local/lib -lHepMC \
+        -ldl -std=c++11
+  if [ $? -ne 0 ]; then
+    echo "main_signal compilation failed"
+    exit 7
+  fi
+
+  # Substitute NEVENTS / NSEED, the placeholder convention already used by
+  # processes/minbias and processes/upsilon_to_leptons.
+  cp ${simdir}/processes/${proc}/${proc}_pythia_card.dat tmpdir/Cards/pythia_card.dat
+  sed -i -e "s@NEVENTS@$nevts@g" -e "s@NSEED@$seed@g" tmpdir/Cards/pythia_card.dat
+  echo "----- pythia card -----"
+  cat tmpdir/Cards/pythia_card.dat
+
+  # PYTHIA8DATA is set explicitly: if the caller's environment points at some
+  # other Pythia installation it leaks into the container and Pythia aborts at
+  # startup with "settings file ... not found".
+  # Not piped into tee: run.sh is invoked as "sh run.sh", so PIPESTATUS is not
+  # guaranteed to be available and the exit status of the pipeline would be
+  # tee's rather than Pythia's.
+  LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH \
+  PYTHIA8DATA=/usr/local/share/Pythia8/xmldoc \
+    ./tmpdir/main_signal tmpdir/Cards/pythia_card.dat tmpdir/signal.hepmc \
+    > tmpdir/pythia.log 2>&1
+  py_status=$?
+  tail -n 40 tmpdir/pythia.log
+  if [ "$py_status" -ne 0 ]; then
+    echo "Pythia generation failed with status ${py_status}"
+    exit 8
+  fi
+
+  # Record the cross section next to the events (spec deliverable 5.5).
+  grep '^XSEC_PB' tmpdir/pythia.log | tail -n 1 \
+      | awk '{print "xsec_pb "$2"\nxsec_pb_err "$3}' > outdir/cross_section.txt
+  cat outdir/cross_section.txt
+
+  # Delphes must run from inside Cards/: delphes_card.dat sources its muon
+  # resolution / ID helpers by relative path ("./muonMomentumResolution.tcl").
+  ( cd tmpdir/Cards && \
+    /usr/local/share/delphes/Delphes-3.5.0/DelphesHepMC2 \
+        delphes_card.dat \
+        ${workdir}/tmpdir/Events/run_01/${proc}.root \
+        ${workdir}/tmpdir/signal.hepmc )
+  if [ $? -ne 0 ]; then
+    echo "DelphesHepMC2 failed"
+    exit 9
+  fi
+  rm -f tmpdir/signal.hepmc
+fi
 
 if [ "$is_test" = "True" ]; then
     end_time_pythia_delphes="$(date -u +%s)"
@@ -207,9 +314,13 @@ DEST_FILE="${DEST_DIR}/${proc}-NEVENT${nevts}-RS${seed}.parquet"
 
 #mkdir -p "${DEST_DIR}"
 
-echo "Copying ${LOCAL_PARQUET} -> ${DEST_FILE}"
-# cp works since EOS is mounted; swap to xrdcp -f if you prefer
-cp -f "${LOCAL_PARQUET}" "${DEST_FILE}"
+if [ "$is_test" = "True" ]; then
+    echo "Test mode: keeping ${LOCAL_PARQUET} locally, not copying to ${DEST_FILE}"
+else
+    echo "Copying ${LOCAL_PARQUET} -> ${DEST_FILE}"
+    # cp works since EOS is mounted; swap to xrdcp -f if you prefer
+    cp -f "${LOCAL_PARQUET}" "${DEST_FILE}"
+fi
 
 # ----------------------------------------------------------------------
 # Validation plots  (always, before deletion)
