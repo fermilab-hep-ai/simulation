@@ -146,3 +146,11 @@ nsqso_born.inc
 logs/*
 # Lxplus artifacts
 *.cc
+
+# Landscape Tier 3 per-event reference: regenerable with dump_tier3.jl, and the
+# committed tier3_summary.csv already carries everything the test consumes
+landscape/julia_ref/fixtures/tier3_events.csv
+
+# Generated landscape samples (LHE + Pythia cards); regenerate with
+# python3 -m landscape.make_lhe
+landscape/samples/

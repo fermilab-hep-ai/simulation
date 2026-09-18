@@ -7,6 +7,12 @@ nevts=$2
 seed=$3
 simdir=$4
 is_test=$5
+# Optional 6th argument.  In test mode run.sh copies the whole Delphes ROOT into
+# outdir/ for inspection; for a large production that is a multi-GB duplicate of
+# the biggest file in the job, written only to be deleted again by the
+# submission wrapper.  Pass False to skip it.  Unset means True, so existing
+# callers are unaffected.
+keep_test_root=${6:-True}
 
 if [ "$is_test" = "True" ]; then
     start_time="$(date -u +%s)"
@@ -48,6 +54,21 @@ else
   gen_mode=madgraph
 fi
 echo "generation mode: ${gen_mode}"
+
+# The landscape points (S1b) add a step in FRONT of the pythia branch rather
+# than a branch of their own: their hard process is a Python cascade generator
+# in ${simdir}/landscape, which writes an LHE file that Pythia then reads with
+# Beams:frameType = 4.  A point opts in by shipping ${proc}_lhe_args.dat, a
+# single line of arguments for landscape.make_lhe.  Everything downstream of
+# the LHE -- Pythia, HepMC, PU 200, Delphes, parquet -- is the existing pythia
+# branch untouched, so these samples are directly comparable with the others.
+lhe_args_file=${simdir}/processes/${proc}/${proc}_lhe_args.dat
+if [ -e "${lhe_args_file}" ]; then
+  needs_lhe=yes
+else
+  needs_lhe=no
+fi
+echo "needs LHE pre-step: ${needs_lhe}"
 
 if [ "$gen_mode" = "madgraph" ]; then
   if [ ! -e ${simdir}/processes/${proc}/${proc}_proc_card.dat ]; then
@@ -225,10 +246,52 @@ else
     exit 7
   fi
 
+  # ---- landscape (S1b) only: generate the LHE hard process first ----------
+  #
+  # The spectrum seed is NOT taken from $seed.  A landscape sample is one
+  # vacuum realisation, so every job of a given point must share the same
+  # spectrum; that seed lives in landscape/params.py BENCHMARKS and is fixed
+  # per benchmark.  $seed varies the events within that realisation, which is
+  # what parallel jobs need.  (L-D varies the spectrum instead, and does it by
+  # being separate benchmarks, not by varying this.)
+  if [ "$needs_lhe" = "yes" ]; then
+    lhe_args=$(sed '/^$/d;/^[[:space:]]*#/d' "${lhe_args_file}" | head -n 1)
+    echo "----- landscape LHE args: ${lhe_args} -----"
+    PYTHONPATH=${simdir}:$PYTHONPATH python3 -m landscape.make_lhe \
+        ${lhe_args} \
+        --nevents $nevts \
+        --seed $seed \
+        --out ${workdir}/tmpdir/landscape.lhe \
+        > tmpdir/make_lhe.log 2>&1
+    lhe_status=$?
+    cat tmpdir/make_lhe.log
+    if [ "$lhe_status" -ne 0 ]; then
+      echo "landscape LHE generation failed with status ${lhe_status}"
+      exit 11
+    fi
+    # An empty or truncated LHE makes Pythia exit 0 having showered nothing,
+    # which then shows up as a mystery empty parquet several minutes later.
+    if [ ! -s ${workdir}/tmpdir/landscape.lhe ] || \
+       ! grep -q '</LesHouchesEvents>' ${workdir}/tmpdir/landscape.lhe; then
+      echo "ERROR: landscape LHE is empty or unterminated; aborting."
+      ls -l ${workdir}/tmpdir/landscape.lhe
+      exit 12
+    fi
+    # Record the parton-level summary next to the events: it is the only place
+    # the cascade multiplicity and the decay displacement are visible before
+    # showering and pileup bury them.
+    PYTHONPATH=${simdir}:$PYTHONPATH python3 -m landscape.analyse_lhe \
+        ${workdir}/tmpdir/landscape.lhe > outdir/parton_level.txt 2>&1
+    cat outdir/parton_level.txt
+  fi
+
   # Substitute NEVENTS / NSEED, the placeholder convention already used by
-  # processes/minbias and processes/upsilon_to_leptons.
+  # processes/minbias and processes/upsilon_to_leptons.  _LHEFILE_ is the
+  # landscape addition; cards without it are unaffected.
   cp ${simdir}/processes/${proc}/${proc}_pythia_card.dat tmpdir/Cards/pythia_card.dat
-  sed -i -e "s@NEVENTS@$nevts@g" -e "s@NSEED@$seed@g" tmpdir/Cards/pythia_card.dat
+  sed -i -e "s@NEVENTS@$nevts@g" -e "s@NSEED@$seed@g" \
+         -e "s@_LHEFILE_@${workdir}/tmpdir/landscape.lhe@g" \
+         tmpdir/Cards/pythia_card.dat
   echo "----- pythia card -----"
   cat tmpdir/Cards/pythia_card.dat
 
@@ -250,8 +313,21 @@ else
   fi
 
   # Record the cross section next to the events (spec deliverable 5.5).
-  grep '^XSEC_PB' tmpdir/pythia.log | tail -n 1 \
+  #
+  # xsec_pb is the cross section AFTER the generator-level jet filter in
+  # main_signal.cc, i.e. what this sample actually represents.  The unfiltered
+  # number and the filter efficiency are written alongside it so the cut can be
+  # undone.  The trailing space in '^XSEC_PB ' matters: without it the pattern
+  # also matches XSEC_PB_UNFILTERED.  A card with the filter off reports an
+  # efficiency of 1 and two identical cross sections.
+  grep '^XSEC_PB ' tmpdir/pythia.log | tail -n 1 \
       | awk '{print "xsec_pb "$2"\nxsec_pb_err "$3}' > outdir/cross_section.txt
+  grep '^XSEC_PB_UNFILTERED ' tmpdir/pythia.log | tail -n 1 \
+      | awk '{print "xsec_pb_unfiltered "$2"\nxsec_pb_unfiltered_err "$3}' \
+      >> outdir/cross_section.txt
+  grep '^FILTER_EFF ' tmpdir/pythia.log | tail -n 1 \
+      | awk '{print "filter_eff "$2"\nfilter_accepted "$3"\nfilter_generated "$4}' \
+      >> outdir/cross_section.txt
   cat outdir/cross_section.txt
 
   # Delphes must run from inside Cards/: delphes_card.dat sources its muon
@@ -265,7 +341,7 @@ else
     echo "DelphesHepMC2 failed"
     exit 9
   fi
-  rm -f tmpdir/signal.hepmc
+  rm -f tmpdir/signal.hepmc tmpdir/landscape.lhe
 fi
 
 if [ "$is_test" = "True" ]; then
@@ -356,7 +432,9 @@ fi
 if [ "$is_test" = "True" ]; then
     mkdir -p outdir
     label="${proc}-${nevts}-${seed}"
-    if [ -n "${final_root}" ] && [ -s "${final_root}" ]; then
+    if [ "$keep_test_root" != "True" ]; then
+        echo "keep_test_root=${keep_test_root}: not copying the Delphes ROOT into outdir/"
+    elif [ -n "${final_root}" ] && [ -s "${final_root}" ]; then
         cp -f "${final_root}" "outdir/${label}.root"
         echo "Saved test ROOT to outdir/${label}.root"
     else

@@ -28,8 +28,9 @@ python3 make_signal_cards.py
 | **C1** boosted SUEP with hard ISR | 1 | `SUEPlike_HV_mPhi125_mX2_Lam2_ISR` | pythia |
 | **C2** prompt collimated soft dimuons | — | alias of `HVdilep_Zp500_piD2_mumu` (ctau = 0) | pythia |
 | **C3** low-mass dijet resonance | 1 | `Zprime_qq_m500` | pythia |
+| **S1b** landscape scalar cascades | 7 | `landscape_{LA_direct,LB_higgs[_displaced],LC_control,LD_spectrum1..3}` | pythia + LHE |
 
-45 process directories in total.
+52 process directories in total.
 
 **m_Z' = 200 is the primary S2 point.** It carries the strong-coupling shower
 configuration (`alphaOrder = 0`, `alphaFSR = 1`, `pTminFSR = 0.5`); 500 and 1000
@@ -48,11 +49,29 @@ so the two are directly comparable:
 ```
 madgraph:  MG5 hard process ── Pythia8 ── Delphes ── parquet     (existing)
 pythia:    Pythia8 hard process ── HepMC ── DelphesHepMC2 ── parquet   (added)
+landscape: landscape.make_lhe ── LHE ─┘                               (added)
 ```
 
 `run.sh` picks the branch automatically: a point with a `*_pythia_card.dat` uses
-the pythia branch, otherwise the madgraph branch. The pythia branch was added
-for this campaign because
+the pythia branch, otherwise the madgraph branch.
+
+The landscape points (S1b) are not a third branch — they are a **step in front
+of** the pythia branch. Their hard process is a Python cascade generator
+(`landscape/`, a port of the authors' Julia), which writes an LHE that Pythia
+reads with `Beams:frameType = 4`. A point opts in by shipping a
+`*_lhe_args.dat` file; `run.sh` runs `landscape.make_lhe` with those arguments
+plus the job's `--nevents` and `--seed`, saves the parton-level summary to
+`outdir/parton_level.txt`, and then hands the LHE to the identical Pythia →
+HepMC → PU 200 → Delphes → parquet chain. Everything downstream is unchanged,
+so these samples are directly comparable with the rest.
+
+**The spectrum seed does not come from the job seed.** A landscape sample is a
+single vacuum realisation, so every parallel job of a point must share one mass
+spectrum; that seed is part of the benchmark definition in
+`landscape/params.py`. The job seed varies the events within the realisation.
+The `L-D` points vary the realisation, and do it by being separate benchmarks.
+
+The pythia branch was added for this campaign because
 
 * the Hidden Valley, Higgs-portal and Z' hard processes all live natively inside
   Pythia and need no MadGraph step at all, and
