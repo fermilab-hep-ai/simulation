@@ -14,8 +14,11 @@ Random:setSeed = on
 Random:seed = NSEED
 Main:numberOfEvents = NEVENTS
 
-! No generator-level cuts of any kind are applied: these signals live entirely
-! below the thresholds that a default cut set would impose (spec section 4).
+! The only generator-level cut is the jet filter at the bottom of this card,
+! which reproduces the parton-level jet requirement the MadGraph Standard Model
+! samples carry.  No pT / eta / mass cut is applied to the signal objects
+! themselves: these signals live entirely below the thresholds that a default
+! cut set would impose (spec section 4).
 
 Init:showChangedSettings = on
 Init:showChangedParticleData = on
@@ -74,3 +77,18 @@ HiddenValley:probVector = 0.75
 4900221:oneChannel = 1 1.0 91 13 -13
 4900113:oneChannel = 1 1.0 91 13 -13
 4900223:oneChannel = 1 1.0 91 13 -13
+
+! ---- Generator-level jet filter: deliberately OFF for this point ----
+! The hadronic signal points carry the jet requirement the MadGraph Standard
+! Model samples use (leading jet > 10 GeV or jet HT > 50 GeV).  This point does
+! not:
+!
+! its visible final state is leptons or photons rather than jets.  The filter
+! clusters the whole visible final state, so it would be cutting on the
+! signal's own leptons/photons, which MG5's is_a_j counts as neither.  The
+! Standard Model samples with no coloured final state -- ggHWW, ggHZZ,
+! ggHgammagamma, DYJetsToLL, WJetsToLNu, ttH_incl -- ship ptj1min = 0 for the
+! same reason.
+!
+! See make_signal_cards.py:UNFILTERED.
+SignalFilter:on = off

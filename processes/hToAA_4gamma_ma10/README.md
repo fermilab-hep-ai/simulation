@@ -50,3 +50,15 @@ apptainer exec --bind $simdir \
 ```
 
 This point uses the **pythia** branch of `run.sh`.
+
+## Generator-level cut
+
+**None.** The hadronic signal points carry the jet requirement the Standard
+Model samples use (leading jet above 10 GeV or jet HT above 50 GeV); this point
+does not. Its visible final state is leptons or
+photons rather than jets, and the filter clusters the whole visible final state,
+so it would be cutting on the signal's own leptons and photons -- which MG5's
+`is_a_j` counts as neither. The Standard Model samples with no coloured final
+state (`ggHWW`, `ggHZZ`, `ggHgammagamma`, `DYJetsToLL`, `WJetsToLNu`,
+`ttH_incl`) ship `ptj1min = 0` for the same reason.
+See `processes/README_signals.md`.

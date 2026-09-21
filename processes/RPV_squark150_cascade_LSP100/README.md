@@ -10,7 +10,7 @@ Pair production of 150 GeV right-handed up squarks, each decaying to a quark plu
 * m_squark = 150 GeV, m_LSP = 100 GeV, splitting 50 GeV
 * Only lambda''_112 is switched on, so the decays are to light quarks
 * Gluino, third generation and the heavier gauginos decoupled at 550 GeV
-* run_card deviates from the repo convention (`ickkw = 0`, `xqcut = 0`, `ptj1min = 0`) per specification section 4
+* run_card deviates from the repo convention (`ickkw = 0`, `xqcut = 0`) per specification section 4; `ptj1min = 10` is kept, matching the Standard Model samples, and is measured to remove nothing (leading truth jet above 15 GeV in 5000/5000 events)
 
 ## Why it evades (or does not evade) the Phase-2 L1 menu
 
@@ -97,3 +97,15 @@ apptainer exec --bind $simdir \
 ```
 
 This point uses the **madgraph** branch of `run.sh`.
+
+## Generator-level cut
+
+An event is kept only if it has a leading jet above 10 GeV **or** a jet HT above
+50 GeV, matching the requirement the MadGraph Standard Model samples carry
+(`ptj1min = 10`, or `htjmin = 50` for the two QCD samples).
+
+MadGraph points impose it through `ptj1min` in the run card. Pythia points have
+no parton-level jet to cut on, so they impose the same requirement on
+hadron-level anti-kT R = 0.4 jets through the `SignalFilter:*` block at the
+bottom of the card, and write the measured efficiency and the corrected cross
+section to `outdir/cross_section.txt`. See `processes/README_signals.md`.

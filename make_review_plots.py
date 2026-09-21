@@ -29,6 +29,7 @@ quoted in instructions.md; the online L1 cuts sit somewhat below them.
 """
 
 import argparse
+import gc
 import glob
 import os
 
@@ -62,12 +63,27 @@ def f32(x):
     return ak.values_astype(x, np.float32)
 
 
-def load(path, max_events=None):
-    cols = [c for c in COLUMNS if c in pq.ParquetFile(path).schema_arrow.names]
-    a = ak.from_arrow(pq.read_table(path, columns=cols))
-    if max_events:
-        a = a[:max_events]
-    return a
+def load(paths, max_events=None):
+    """Load one signal point.
+
+    A point is produced as several chunks (the v2 production writes five
+    10000-event files per point, matching the production_final convention), so
+    this takes a list and concatenates until max_events is reached.  Passing a
+    single path still works.
+    """
+    if isinstance(paths, str):
+        paths = [paths]
+    parts, total = [], 0
+    for path in sorted(paths):
+        cols = [c for c in COLUMNS if c in pq.ParquetFile(path).schema_arrow.names]
+        a = ak.from_arrow(pq.read_table(path, columns=cols))
+        if max_events and total + len(a) > max_events:
+            a = a[: max_events - total]
+        parts.append(a)
+        total += len(a)
+        if max_events and total >= max_events:
+            break
+    return parts[0] if len(parts) == 1 else ak.concatenate(parts)
 
 
 def derive(a):
@@ -251,6 +267,28 @@ COMPARISONS = [
 ]
 
 
+MAX_STORED_PER_POINT = 2_000_000
+
+
+def subsample(v, cap=MAX_STORED_PER_POINT):
+    """Uniformly thin a per-candidate array kept only for a histogram.
+
+    A stride, not a random draw: candidate order carries no correlation with
+    d0, so the shape is preserved, and rng.choice(replace=False) over tens of
+    millions of entries costs minutes per point.
+    """
+    if v is None or len(v) <= cap:
+        return v
+    return v[:: (len(v) + cap - 1) // cap]
+
+
+# The keys make_comparisons reads, plus the two it derives n_lep_pair from.
+# Anything else is dropped after the per-point page is written.
+COMPARISON_KEYS = frozenset({
+    "cand_d0_hard", "mu_d0", "n_cand_full", "n_jet30", "n_mu", "n_ele", "pho_dr",
+})
+
+
 def make_comparisons(store, outdir):
     os.makedirs(outdir, exist_ok=True)
     made = []
@@ -259,9 +297,9 @@ def make_comparisons(store, outdir):
         for p in procs:
             if p not in store:
                 continue
-            d, a = store[p]
+            d = store[p]
             if key == "pho_dr":
-                v = photon_dr(a)
+                v = d.get("pho_dr", np.array([]))
             elif key == "n_lep_pair":
                 v = d["n_mu"] if p.endswith("mumu") else d["n_ele"]
             else:
@@ -340,7 +378,7 @@ def write_index(outdir, procs, comparisons, rows):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--indir", default="/eos/cms/store/group/phys_b2g/CASE/collide_test")
+    ap.add_argument("--indir", default="/eos/cms/store/group/phys_b2g/CASE/collide_v2")
     ap.add_argument("--outdir", required=True)
     ap.add_argument("--max-events", type=int, default=None)
     ap.add_argument("--only", default=None, help="comma-separated subset")
@@ -360,7 +398,7 @@ def main():
         if not files:
             continue
         try:
-            a = load(files[0], args.max_events)
+            a = load(files, args.max_events)
             der = derive(a)
         except Exception as exc:  # noqa: BLE001
             print("  !! %s: %s" % (proc, exc))
@@ -369,7 +407,22 @@ def main():
         os.makedirs(os.path.join(args.outdir, proc), exist_ok=True)
         overview(proc, der, a, os.path.join(args.outdir, proc, "overview.png"))
         rows.append(summary_row(proc, n_ev, der, a))
-        store[proc] = (der, a)
+        # Everything below is about not holding 52 points in memory at once.
+        # The per-point panels and the summary row are already written, so only
+        # what the cross-point comparisons read needs to survive.  The full
+        # candidate lists (cand_pt, cand_d0) are ~5700 entries per event at
+        # PU 200 and dwarf everything else; no comparison uses them.
+        der["pho_dr"] = photon_dr(a)
+        kept = {k: v for k, v in der.items() if k in COMPARISON_KEYS}
+        # cand_d0_hard is per-candidate, not per-event: at 50000 events it is
+        # tens of millions of entries, and holding one per point across 52
+        # points is what actually drives the memory.  It only ever feeds a
+        # histogram, so a fixed-seed uniform subsample has the same shape.
+        kept = {k: (subsample(v) if k == "cand_d0_hard" else v)
+                for k, v in kept.items()}
+        store[proc] = kept
+        del a, der
+        gc.collect()
         procs.append(proc)
         print("  %-42s %d events" % (proc, n_ev))
 

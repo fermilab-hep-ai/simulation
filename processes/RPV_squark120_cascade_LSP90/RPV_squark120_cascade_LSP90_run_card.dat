@@ -1,6 +1,8 @@
 #*********************************************************************
 # AIDA-Scout S5 run card.  Derived from the repo's standard run card with
-# ickkw / xqcut / ptj1min forced off -- see spec section 4.
+# ickkw / xqcut forced off (spec section 4), ptj1min kept at the repo's
+# standard 10 GeV so that these points carry the same generator-level jet
+# requirement as the Standard Model samples.
 #*********************************************************************
   RPV       = run_tag ! name of the run
   _NEVENTS_ = nevents ! Number of unweighted events requested
@@ -117,7 +119,7 @@
  0.0  = xptb ! minimum pt for at least one b
  0.0  = xpta ! minimum pt for at least one photon
  0.0  = xptl ! minimum pt for at least one charged lepton
- 0.0   = ptj1min ! minimum pt for the leading jet in pt   <-- zeroed
+ 10.0   = ptj1min ! minimum pt for the leading jet in pt   <-- matches the SM samples
  0.0   = ptj2min ! minimum pt for the second jet in pt
  0.0   = ptj3min ! minimum pt for the third jet in pt
  0.0   = ptj4min ! minimum pt for the fourth jet in pt

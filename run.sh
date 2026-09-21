@@ -256,10 +256,17 @@ else
   # being separate benchmarks, not by varying this.)
   if [ "$needs_lhe" = "yes" ]; then
     lhe_args=$(sed '/^$/d;/^[[:space:]]*#/d' "${lhe_args_file}" | head -n 1)
-    echo "----- landscape LHE args: ${lhe_args} -----"
+    # Generate a few percent more hard events than were asked for.  The hard
+    # process here comes from a file, so an event the generator-level jet filter
+    # rejects cannot be replaced the way a Pythia-generated one can -- without
+    # headroom a filtered LHE point lands just short of its request.  The
+    # filtered landscape points measure 99.7-99.9% efficient, so 5% is ample;
+    # unfiltered points simply leave the surplus unused.
+    lhe_nevts=$(( (nevts * 105 + 99) / 100 ))
+    echo "----- landscape LHE args: ${lhe_args} (${lhe_nevts} events for ${nevts} requested) -----"
     PYTHONPATH=${simdir}:$PYTHONPATH python3 -m landscape.make_lhe \
         ${lhe_args} \
-        --nevents $nevts \
+        --nevents ${lhe_nevts} \
         --seed $seed \
         --out ${workdir}/tmpdir/landscape.lhe \
         > tmpdir/make_lhe.log 2>&1

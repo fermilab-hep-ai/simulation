@@ -81,3 +81,15 @@ apptainer exec --bind $simdir \
 ```
 
 This point uses the **pythia** branch of `run.sh`.
+
+## Generator-level cut
+
+An event is kept only if it has a leading jet above 10 GeV **or** a jet HT above
+50 GeV, matching the requirement the MadGraph Standard Model samples carry
+(`ptj1min = 10`, or `htjmin = 50` for the two QCD samples).
+
+MadGraph points impose it through `ptj1min` in the run card. Pythia points have
+no parton-level jet to cut on, so they impose the same requirement on
+hadron-level anti-kT R = 0.4 jets through the `SignalFilter:*` block at the
+bottom of the card, and write the measured efficiency and the corrected cross
+section to `outdir/cross_section.txt`. See `processes/README_signals.md`.

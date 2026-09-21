@@ -48,8 +48,11 @@ Random:setSeed = on
 Random:seed = NSEED
 Main:numberOfEvents = NEVENTS
 
-! No generator-level cuts of any kind are applied: these signals live entirely
-! below the thresholds that a default cut set would impose (spec section 4).
+! The only generator-level cut is the jet filter at the bottom of this card,
+! which reproduces the parton-level jet requirement the MadGraph Standard Model
+! samples carry.  No pT / eta / mass cut is applied to the signal objects
+! themselves: these signals live entirely below the thresholds that a default
+! cut set would impose (spec section 4).
 
 Init:showChangedSettings = on
 Init:showChangedParticleData = on
@@ -58,6 +61,128 @@ Next:numberShowInfo = 0
 Next:numberShowProcess = 1
 Next:numberShowEvent = 0
 """
+
+
+# ---------------------------------------------------------------------------
+# Generator-level jet filter, appended to every Pythia-mode signal card by
+# make_signal_cards.py.
+# ---------------------------------------------------------------------------
+
+# Which signals carry the generator-level jet filter, and why it is not applied
+# to all of them.
+#
+# The Standard Model samples do NOT split their jet cut by final state.  Every
+# one of them with xqcut = 20 carries ptj1min = 10 and every one with xqcut = 10
+# or 0 carries ptj1min = 0, a correlation that holds across all of processes/
+# and that the final state does not predict: WW_leptonic, WZ_leptonic,
+# ZZ_leptonic, ZJetsTovv and ggHtautau all carry the cut, while ggHWW, ggHZZ,
+# ggHgammagamma, DYJetsToLL, WJetsToLNu and ttH_incl do not.  There is no SM
+# rule to copy, so the rule here is the physical one: filter a point when the
+# jets being clustered are genuinely hadronic.
+#
+# Measured share of the visible truth-level pT (Gen_Part, status 1, no pileup,
+# neutrinos removed) on the 5000-event samples:
+#
+#     SUEPlike_HV_mPhi125_Lam2      0.0% e/mu   20.4% gamma   hadronic baseline
+#     Zprime_qq_m500                0.1%        26.6%
+#     RPV_squark300_UDD             0.1%        26.2%
+#     hToAA_4b_ma30                 2.2%        27.4%
+#     hToAA_4tau_ma5                5.5%        26.2%    taus decay hadronically
+#     HVdilep_Zp200_piD2_mumu      28.6%        11.5%    <-- jets are muons
+#     HVdilep_Zp1000_piD2_mumu     40.1%         4.9%    <-- jets are muons
+#     hToAA_4gamma_ma1              0.0%        59.1%    <-- jets are photons
+#
+# The 20-27% photon fraction is the pi0 content of ordinary jets, which is what
+# makes hToAA_4gamma's 59% and HVdilep's 29-40% e/mu stand out.  SlowJet
+# clusters the whole visible final state, so for those 18 points the filter
+# would be cutting on the signal's own leptons and photons -- MG5's is_a_j
+# counts neither -- and the ~100% efficiencies it reports for them are not a
+# jet requirement at all.  They are therefore left unfiltered, which is also
+# what the SM samples with no coloured final state do.
+#
+# hToAA_4tau sits at the hadronic baseline despite the name, because the taus
+# decay hadronically, and its SM counterpart ggHtautau carries ptj1min = 10.
+UNFILTERED = (
+    ("HVdilep_",             "REASON_NOT_JETS"),
+    ("hToAA_4gamma_",        "REASON_NOT_JETS"),
+    # The landscape cascades are hadronic and all but one are ~100% efficient;
+    # L-A direct production is the exception, see REASON_TOO_SOFT.
+    ("landscape_LA_direct",  "REASON_TOO_SOFT"),
+)
+
+
+def jet_filter_reason(name):
+    """The reason this point is exempt from the filter, or None if it is not."""
+    for prefix, reason in UNFILTERED:
+        if name.startswith(prefix):
+            return globals()[reason]
+    return None
+
+
+def wants_jet_filter(name):
+    """True if this point should carry the generator-level jet filter."""
+    return jet_filter_reason(name) is None
+
+
+def jet_filter_block(name):
+    """The card block to append for this point, filtered or not."""
+    reason = jet_filter_reason(name)
+    if reason is None:
+        return JET_FILTER
+    return JET_FILTER_OFF.format(reason=reason)
+
+
+JET_FILTER = """
+! ---- Generator-level jet filter (see main_signal.cc) ----
+! Matches the parton-level requirement the MadGraph Standard Model samples in
+! this repository carry: htjmin = 50 for the two QCD samples, ptj1min = 10 for
+! the hadronic ones.  Both are event-level cuts in MG5 -- cuts.f counts every
+! final-state parton into njets, decay products included, and rejects the event
+! if njets < 1 while either cut is on -- so the honest Pythia-side equivalent is
+! an event filter, not a per-particle cut.
+!
+! Applied to hadron-level anti-kT R = 0.4 jets built from the visible final
+! state, which is the same object as Delphes' Gen_JetAK4.  An event passes if
+! EITHER arm passes, because the SM samples use one cut or the other, never
+! both.
+SignalFilter:on = on
+SignalFilter:leadJetPTmin = 10.0
+SignalFilter:HTmin = 50.0
+SignalFilter:jetPTmin = 10.0
+SignalFilter:jetR = 0.4
+SignalFilter:jetEtaMax = 5.0
+"""
+
+JET_FILTER_OFF = """
+! ---- Generator-level jet filter: deliberately OFF for this point ----
+! The hadronic signal points carry the jet requirement the MadGraph Standard
+! Model samples use (leading jet > 10 GeV or jet HT > 50 GeV).  This point does
+! not:
+!
+{reason}
+!
+! See make_signal_cards.py:UNFILTERED.
+SignalFilter:on = off
+"""
+
+# Why a point is exempt.  The two reasons are different and the card should say
+# which one applies, not a generic "not filtered".
+REASON_NOT_JETS = """! its visible final state is leptons or photons rather than jets.  The filter
+! clusters the whole visible final state, so it would be cutting on the
+! signal's own leptons/photons, which MG5's is_a_j counts as neither.  The
+! Standard Model samples with no coloured final state -- ggHWW, ggHZZ,
+! ggHgammagamma, DYJetsToLL, WJetsToLNu, ttH_incl -- ship ptj1min = 0 for the
+! same reason."""
+
+REASON_TOO_SOFT = """! its hadronic activity is real but sits below the cut.  Measured filter
+! efficiency 35.1% (702/2000), against 99.7-99.9% for every other landscape
+! point.  The loss is not a flat normalisation: the cut keeps exactly the
+! events that do have a jet above 10 GeV, biasing the sample towards a hard
+! tail whose absence is the entire claim of the point -- its README measures a
+! single 30 GeV jet in only 3.2% of events and a median HT over such jets of
+! zero.  Filtering it would also need ~3x LHE headroom, since an LHE-driven
+! event that the filter rejects cannot be replaced."""
+
 
 
 def hv_block(lam, ngauge=3, nflav=2, prob_vector=0.75, alpha_fsr=None):
@@ -502,17 +627,37 @@ output _OUTDIR_
 
 def rpv_run_card(nevents_placeholder="_NEVENTS_", time_of_flight="-1.0"):
     """
-    Run card with every pT / dR / mass cut zeroed and MLM matching OFF.
+    Run card with MLM matching OFF and the SM leading-jet cut kept ON.
 
     The repo's existing cards ship ickkw = 1 with xqcut = 20 and ptj1min = 10.
     Spec section 4 explicitly forbids MLM here (a low xqcut in this regime is
-    unstable), and ptj1min = 10 would bias a signal whose jets are 10-30 GeV.
-    Both are therefore overridden, and the conflict is flagged in the point
-    README as the spec asks.
+    unstable), so ickkw / xqcut stay off.
+
+    ptj1min = 10 is kept, so that these points carry the same generator-level
+    jet requirement as the hadronic Standard Model samples they will be compared
+    against.  The spec's objection -- that it would bias a signal whose jets are
+    10-30 GeV -- does not survive measurement: every RPV point here has its
+    leading truth-level jet far above 10 GeV in 100.0% of events (5000/5000 for
+    all nine, measured on Gen_JetAK4 with a 15 GeV floor, i.e. an even stricter
+    test than the cut itself), so the cut removes nothing.  The softest point,
+    RPV_squark120_cascade_LSP90, still has a median leading jet of 66.7 GeV.
+
+    Note that ptj1min is NOT gated by cut_decays: MG5 counts every final-state
+    parton with |pdg| <= maxjetflavor or 21 into njets regardless of whether it
+    came from a decay (SubProcesses/cuts.f), so on these decay-chain processes
+    the cut does apply to the squark / neutralino decay quarks.  cut_decays
+    stays False because it gates the per-particle pt / eta / dR cuts, which
+    would bias the decay phase space and are all zero here anyway.
+
+    ptj2min / ptj3min / ptj4min stay at zero: the SM samples only constrain the
+    leading jet, and the whole point of the cascade samples is the soft tail of
+    the jet multiplicity.
     """
     return """#*********************************************************************
 # AIDA-Scout S5 run card.  Derived from the repo's standard run card with
-# ickkw / xqcut / ptj1min forced off -- see spec section 4.
+# ickkw / xqcut forced off (spec section 4), ptj1min kept at the repo's
+# standard 10 GeV so that these points carry the same generator-level jet
+# requirement as the Standard Model samples.
 #*********************************************************************
   RPV       = run_tag ! name of the run
   {nev} = nevents ! Number of unweighted events requested
@@ -629,7 +774,7 @@ def rpv_run_card(nevents_placeholder="_NEVENTS_", time_of_flight="-1.0"):
  0.0  = xptb ! minimum pt for at least one b
  0.0  = xpta ! minimum pt for at least one photon
  0.0  = xptl ! minimum pt for at least one charged lepton
- 0.0   = ptj1min ! minimum pt for the leading jet in pt   <-- zeroed
+ 10.0   = ptj1min ! minimum pt for the leading jet in pt   <-- matches the SM samples
  0.0   = ptj2min ! minimum pt for the second jet in pt
  0.0   = ptj3min ! minimum pt for the third jet in pt
  0.0   = ptj4min ! minimum pt for the fourth jet in pt
@@ -1197,11 +1342,52 @@ apptainer exec --bind $simdir \\
 ```
 
 This point uses the **{mode}** branch of `run.sh`.
+
+## Generator-level cut
+
+{gencut}
 """
+
+
+GENCUT_ON = """An event is kept only if it has a leading jet above 10 GeV **or** a jet HT above
+50 GeV, matching the requirement the MadGraph Standard Model samples carry
+(`ptj1min = 10`, or `htjmin = 50` for the two QCD samples).
+
+MadGraph points impose it through `ptj1min` in the run card. Pythia points have
+no parton-level jet to cut on, so they impose the same requirement on
+hadron-level anti-kT R = 0.4 jets through the `SignalFilter:*` block at the
+bottom of the card, and write the measured efficiency and the corrected cross
+section to `outdir/cross_section.txt`. See `processes/README_signals.md`."""
+
+GENCUT_OFF_HEAD = """**None.** The hadronic signal points carry the jet requirement the Standard
+Model samples use (leading jet above 10 GeV or jet HT above 50 GeV); this point
+does not."""
+
+GENCUT_OFF_NOT_JETS = GENCUT_OFF_HEAD + """ Its visible final state is leptons or
+photons rather than jets, and the filter clusters the whole visible final state,
+so it would be cutting on the signal's own leptons and photons -- which MG5's
+`is_a_j` counts as neither. The Standard Model samples with no coloured final
+state (`ggHWW`, `ggHZZ`, `ggHgammagamma`, `DYJetsToLL`, `WJetsToLNu`,
+`ttH_incl`) ship `ptj1min = 0` for the same reason.
+See `processes/README_signals.md`."""
+
+GENCUT_OFF_TOO_SOFT = GENCUT_OFF_HEAD + """ Its hadronic activity is real but
+sits below the cut: the measured filter efficiency is **35.1%** (702/2000),
+against 99.7-99.9% for every other landscape point. The loss is not a flat
+normalisation -- the cut keeps exactly the events that do have a jet above
+10 GeV, biasing the sample towards a hard tail whose absence is the whole claim
+of the point. Filtering it would also need ~3x LHE headroom, because an
+LHE-driven event the filter rejects cannot be replaced.
+See `processes/README_signals.md`."""
 
 
 def write_readme(path, **kw):
     kw.setdefault("notes", "")
+    reason = jet_filter_reason(kw["name"])
+    kw.setdefault("gencut",
+                  GENCUT_ON if reason is None
+                  else (GENCUT_OFF_TOO_SOFT if reason is REASON_TOO_SOFT
+                        else GENCUT_OFF_NOT_JETS))
     with open(path, "w") as fh:
         fh.write(README_HEAD.format(**kw))
 
@@ -1451,11 +1637,14 @@ def build_readmes(outdir):
                     "with no open decay. All indices stay in the first two generations, so "
                     "no top is produced and there is no genuine MET\n"
                     "* **run_card deviates from the repo convention:** `ickkw = 0`, "
-                    "`xqcut = 0`, `ptj1min = 0`. The repo's standard cards ship "
-                    "`ickkw = 1 / xqcut = 20 / ptj1min = 10`; specification section 4 "
-                    "forbids MLM here and a 10 GeV leading-jet cut would bias a signal "
-                    "whose jets are 10-30 GeV. **Conflict flagged rather than silently "
-                    "followed, as requested.**\n"
+                    "`xqcut = 0`. The repo's standard cards ship "
+                    "`ickkw = 1 / xqcut = 20`; specification section 4 forbids MLM "
+                    "here, so matching stays off and the conflict is flagged rather "
+                    "than silently followed. `ptj1min = 10` **is** kept, so this "
+                    "point carries the same generator-level leading-jet requirement "
+                    "as the Standard Model samples; the spec's objection to it does "
+                    "not survive measurement -- the leading truth-level jet is above "
+                    "15 GeV in 5000/5000 events, so the cut removes nothing\n"
                     "* Cross section: taken from the MG5 run output (`run_01` banner). "
                     "Unlike the cascade points this number **is** usable -- every open "
                     "decay mode is in the matrix element, so MG5's "
@@ -2041,7 +2230,7 @@ def main():
         os.makedirs(d, exist_ok=True)
         path = os.path.join(d, "{0}_pythia_card.dat".format(name))
         with open(path, "w") as fh:
-            fh.write(body)
+            fh.write(body + jet_filter_block(name))
         written.append(path)
 
     for name, m in rpv_points():
@@ -2084,7 +2273,10 @@ def main():
                     "* Gluino, third generation and the heavier gauginos decoupled at "
                     "{3:g} GeV\n"
                     "* run_card deviates from the repo convention (`ickkw = 0`, "
-                    "`xqcut = 0`, `ptj1min = 0`) per specification section 4").format(
+                    "`xqcut = 0`) per specification section 4; `ptj1min = 10` is "
+                    "kept, matching the Standard Model samples, and is measured to "
+                    "remove nothing (leading truth jet above 15 GeV in 5000/5000 "
+                    "events)").format(
                         m, y, m - y, m + 400.0),
             menu=MENU.format(ht=RPV_MEAS.get((m, y), {}).get("ht", "to measure"),
                              jet=RPV_MEAS.get((m, y), {}).get("jet", "to measure"),

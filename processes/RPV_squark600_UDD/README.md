@@ -10,7 +10,7 @@ Pair production of degenerate light squarks at 600 GeV, each decaying through th
 * `generate p p > sq sq~, (sq > lq~ lq~), (sq~ > lq lq)` over the **four right-handed** light-flavour squarks -- u_R, c_R, d_R, s_R -- which are the only states the lambda'' UDD operator couples to. The decay is in the matrix element, not the SLHA decay table
 * m_squark = 600 GeV; stops, sbottoms, the left-handed light-flavour squarks, the gluino and all gauginos decoupled at 800 GeV, so squark pair production dominates and no MET is produced
 * lambda''_112 (u d s) and lambda''_212 (c d s) at 0.2; **every other entry of all three RPV blocks** (RVLAMUDD, RVLAMLQD, RVLAMLLE) zeroed. Both couplings are needed: 112 alone leaves the charm squark with no open decay. All indices stay in the first two generations, so no top is produced and there is no genuine MET
-* **run_card deviates from the repo convention:** `ickkw = 0`, `xqcut = 0`, `ptj1min = 0`. The repo's standard cards ship `ickkw = 1 / xqcut = 20 / ptj1min = 10`; specification section 4 forbids MLM here and a 10 GeV leading-jet cut would bias a signal whose jets are 10-30 GeV. **Conflict flagged rather than silently followed, as requested.**
+* **run_card deviates from the repo convention:** `ickkw = 0`, `xqcut = 0`. The repo's standard cards ship `ickkw = 1 / xqcut = 20`; specification section 4 forbids MLM here, so matching stays off and the conflict is flagged rather than silently followed. `ptj1min = 10` **is** kept, so this point carries the same generator-level leading-jet requirement as the Standard Model samples; the spec's objection to it does not survive measurement -- the leading truth-level jet is above 15 GeV in 5000/5000 events, so the cut removes nothing
 * Cross section: taken from the MG5 run output (`run_01` banner). Unlike the cascade points this number **is** usable -- every open decay mode is in the matrix element, so MG5's sigma_prod x sum(Gamma_i)/Gamma_total reduces to sigma_prod
 
 ## Why it evades (or does not evade) the Phase-2 L1 menu
@@ -86,3 +86,15 @@ apptainer exec --bind $simdir \
 ```
 
 This point uses the **madgraph** branch of `run.sh`.
+
+## Generator-level cut
+
+An event is kept only if it has a leading jet above 10 GeV **or** a jet HT above
+50 GeV, matching the requirement the MadGraph Standard Model samples carry
+(`ptj1min = 10`, or `htjmin = 50` for the two QCD samples).
+
+MadGraph points impose it through `ptj1min` in the run card. Pythia points have
+no parton-level jet to cut on, so they impose the same requirement on
+hadron-level anti-kT R = 0.4 jets through the `SignalFilter:*` block at the
+bottom of the card, and write the measured efficiency and the corrected cross
+section to `outdir/cross_section.txt`. See `processes/README_signals.md`.

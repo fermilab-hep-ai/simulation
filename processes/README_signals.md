@@ -126,6 +126,158 @@ conventional, easily-triggered resonance for comparison.
 
 ---
 
+## Generator-level jet cut
+
+The 27 **hadronic** signal points carry the same generator-level requirement as
+the MadGraph Standard Model samples:
+
+> keep the event if it has a **leading jet above 10 GeV** or a **jet HT above
+> 50 GeV**.
+
+The 18 points whose visible final state is leptons or photons -- `HVdilep_*`
+(15) and `hToAA_4gamma_*` (3) -- carry **no** generator-level cut. Why, below.
+
+### What the Standard Model samples actually do
+
+Not what their names suggest. The cut does not split by final state; it tracks
+the MLM merging scale. Every SM sample with `xqcut = 20` carries
+`ptj1min = 10`, every one with `xqcut = 10` or `0` carries `ptj1min = 0`, and
+the correlation is exact:
+
+| carries `ptj1min = 10` | carries `ptj1min = 0` |
+|---|---|
+| `WW_leptonic`, `WZ_leptonic`, `ZZ_leptonic` | `ggHWW`, `ggHZZ` |
+| `ZJetsTovv` (fully invisible) | `WJetsToLNu`, `DYJetsToLL` |
+| `ggHtautau` | `ggHgammagamma`, `ttH_incl`, `tttt_incl` |
+
+`ggHtautau` against `ggHWW` is the clearest pair: same production, neither
+hadronic, opposite cut. The two QCD samples are the only ones using `htjmin`,
+at 50, which is a regulator for the divergent dijet cross section rather than an
+acceptance choice.
+
+So there is no SM rule to copy, and the rule used here is the physical one:
+filter a point when the jets being clustered are genuinely hadronic.
+
+### Why the cut reaches further than it looks
+
+Both MG5 cuts are event-level, and neither is gated by `cut_decays`.
+`SubProcesses/cuts.f` counts every final-state parton with
+`|pdg| <= maxjetflavor` or 21 into `njets` whether or not it came from a decay,
+then rejects the event outright if `njets < 1` while either cut is on.
+`cut_decays` gates only the per-particle pT / eta / dR cuts.
+
+Two consequences:
+
+* On a decay-chain process such as `p p > sq sq~, (sq > q q)` the cut **does**
+  apply to the squark decay quarks. It is not the no-op it looks like with
+  `cut_decays = False`.
+* On a process with no partons in the final state it rejects everything.
+  Measured: `p p > w+ w-, (w+ > e+ ve), (w- > e- ve~)` integrates to
+  0.8635 pb at `ptj1min = 0` and returns *zero cross section* at
+  `ptj1min = 10`. The 0-jet bins of `WW_leptonic`, `WZ_leptonic`,
+  `ZZ_leptonic`, `ZJetsTovv` and `ggHtautau` are therefore discarded by their
+  own run cards -- those samples are effectively "+ at least one jet above
+  10 GeV". That is a pre-existing property of the SM samples, not something
+  introduced here, but it is worth knowing before they are used as a baseline.
+
+### Which signals are filtered, and why those
+
+`SlowJet` clusters the whole visible final state, so leptons and photons end up
+inside "jets" -- MG5's `is_a_j` counts neither. Share of the visible truth-level
+pT (Gen_Part, status 1, no pileup, neutrinos removed), measured on the
+5000-event samples:
+
+| point | e/mu | gamma | |
+|---|---|---|---|
+| `SUEPlike_HV_mPhi125_Lam2` | 0.0% | 20.4% | hadronic baseline (pi0 photons) |
+| `Zprime_qq_m500` | 0.1% | 26.6% | baseline |
+| `RPV_squark300_UDD` | 0.1% | 26.2% | baseline |
+| `hToAA_4b_ma30` | 2.2% | 27.4% | baseline |
+| `hToAA_4tau_ma5` | 5.5% | 26.2% | baseline -- taus decay hadronically |
+| `HVdilep_Zp200_piD2_mumu` | **28.6%** | 11.5% | the jets are muon clusters |
+| `HVdilep_Zp1000_piD2_mumu` | **40.1%** | 4.9% | the jets are muon clusters |
+| `hToAA_4gamma_ma1` | 0.0% | **59.1%** | the jets are photon pairs |
+
+The 20-27% photon fraction is the pi0 content of ordinary jets, which is what
+makes the last three rows stand out. For those 18 points a jet filter would be
+cutting on the signal's own leptons and photons, so they are left unfiltered --
+which is also what the SM samples with no coloured final state do.
+
+| | filtered | how |
+|---|---|---|
+| `RPV_*` (9) | yes | `ptj1min = 10` in the run card |
+| `SUEPlike_HV_*` (5) | yes | `SignalFilter:*` in the Pythia card |
+| `hToAA_4b_*` (6) | yes | `SignalFilter:*` |
+| `hToAA_4tau_*` (6) | yes | `SignalFilter:*` |
+| `Zprime_qq_m500` (1) | yes | `SignalFilter:*` |
+| `HVdilep_*` (15) | **no** | `SignalFilter:on = off`, stated in the card |
+| `hToAA_4gamma_*` (3) | **no** | `SignalFilter:on = off`, stated in the card |
+
+The classification lives in `make_signal_cards.py:UNFILTERED_PREFIXES`; a point
+that is neither gets filtered, so a new leptonic signal must be added there
+deliberately.
+
+### How the Pythia filter works
+
+Pythia points have no parton-level jet to cut on -- for the Hidden Valley
+samples the visible jets are made by the dark shower, long after the hard
+process. `main_signal.cc` clusters the visible final state into anti-kT R = 0.4
+jets above 10 GeV within |eta| < 5 -- the same object Delphes calls
+`Gen_JetAK4` -- and vetoes the event before it is written to HepMC. The event
+loop then keeps generating until the requested number has been *accepted*, so a
+filtered sample is still the size that was asked for, exactly as MadGraph
+behaves.
+
+Because the filter runs before Delphes it changes the cross section, so these
+points write five numbers to `outdir/cross_section.txt`:
+
+| key | meaning |
+|---|---|
+| `xsec_pb`, `xsec_pb_err` | cross section **after** the filter -- what the sample represents |
+| `xsec_pb_unfiltered`, `xsec_pb_unfiltered_err` | before the filter |
+| `filter_eff`, `filter_accepted`, `filter_generated` | the measured efficiency and the counts behind it |
+
+An unfiltered point reports an efficiency of 1 and two identical cross sections.
+
+### Measured efficiency
+
+Measured by generating until 500 events were accepted (binomial uncertainty
+~0.9%). The filter runs before Delphes and before pileup, so these are
+production efficiencies, not a reconstructed approximation.
+
+| Family | Filter efficiency |
+|---|---|
+| `SUEPlike_HV_mPhi125_*` | 96.0% (Lam1), 96.7% (Lam2), 100% (`_ISR`) |
+| `SUEPlike_HV_mPhi400_*` | 99.2 - 99.8% |
+| `hToAA_4tau_*` | 98.8 - 99.4% |
+| `hToAA_4b_*` | 99.4 - 100% |
+| `Zprime_qq_m500` | 100% |
+| `RPV_*` (all nine, MadGraph) | 100% |
+
+The MadGraph side was checked directly rather than by proxy. Two points were
+integrated twice at the same seed, once with `ptj1min = 10` and once with it
+zeroed:
+
+| point | with the cut | without |
+|---|---|---|
+| `RPV_squark120_cascade_LSP90` (softest jets) | 5.4437911e-14, 2000/2000 | 5.4437911e-14, 2000/2000 |
+| `RPV_squark300_UDD` | 29.880685 pb, 1997/2000 | 29.880685 pb, 1997/2000 |
+
+Identical to every digit, so the cut removes nothing on either. (The cascade
+number is not a physical cross section -- the widths are set by hand, see below.
+The 29.88 pb for `RPV_squark300_UDD` agrees with the 29.83 +- 0.089 pb measured
+on the 5000-event production sample, and the 1997/2000 shortfall is present with
+and without the cut, so it is MG5 unweighting, not the cut.)
+
+This also reverses the earlier spec-section-4 decision to zero `ptj1min` on the
+RPV points, whose stated reason was that 10 GeV would bias a signal with 10-30
+GeV jets. It does not: the softest RPV point has a median leading jet of
+66.7 GeV, and all nine clear a stricter 15 GeV truth-jet test in 5000 of 5000
+events. MLM matching stays off (`ickkw = 0`, `xqcut = 0`) -- that part of
+section 4 still holds.
+
+---
+
 **Cross sections.** For the Pythia-generated points the LO cross section is
 written to `outdir/cross_section.txt` at generation time. No k-factors are
 applied. For the Higgs-portal points (`SUEPlike_*`, `hToAA_*`) normalise as

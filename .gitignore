@@ -154,3 +154,10 @@ landscape/julia_ref/fixtures/tier3_events.csv
 # Generated landscape samples (LHE + Pythia cards); regenerate with
 # python3 -m landscape.make_lhe
 landscape/samples/
+
+# Review plots: a symlink to the published copy under the user's EOS web area.
+# Deliberately not tracked -- it is an absolute path that resolves only on
+# lxplus, so committing it would dangle for anyone cloning elsewhere.  The
+# plots live at https://oamram.web.cern.ch/collide_v2_review/ and on EOS at
+# /eos/cms/store/group/phys_b2g/CASE/collide_v2/review_plots/
+/review_plots

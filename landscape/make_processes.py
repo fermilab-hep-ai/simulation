@@ -26,6 +26,12 @@ being three separate benchmarks.
 import argparse
 import os
 
+# The generator-level jet filter and the decision of which points carry it live
+# in make_signal_cards.py, at the repository root, so that every signal in the
+# campaign is classified in exactly one place.  Run this module from the
+# repository root (python3 -m landscape.make_processes) so the import resolves.
+from make_signal_cards import jet_filter_block
+
 from .params import (SMConstants, BENCHMARKS, benchmark_entry,
                      LAMBDA_RETUNED, LD_SPECTRUM_SEEDS)
 from .generate import draw_spectrum
@@ -65,8 +71,11 @@ Random:setSeed = on
 Random:seed = NSEED
 Main:numberOfEvents = NEVENTS
 
-! No generator-level cuts of any kind are applied: these signals live entirely
-! below the thresholds that a default cut set would impose (spec section 4).
+! The only generator-level cut is the jet filter at the bottom of this card,
+! which reproduces the parton-level jet requirement the MadGraph Standard Model
+! samples carry.  No pT / eta / mass cut is applied to the signal objects
+! themselves: these signals live entirely below the thresholds that a default
+! cut set would impose (spec section 4).
 
 Init:showChangedSettings = on
 Init:showChangedParticleData = on
@@ -361,7 +370,7 @@ def main(argv=None):
         d = os.path.join(args.outdir, name)
         os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "{0}_pythia_card.dat".format(name)), "w") as fh:
-            fh.write(card(tag))
+            fh.write(card(tag) + jet_filter_block(name))
         with open(os.path.join(d, "{0}_lhe_args.dat".format(name)), "w") as fh:
             fh.write(lhe_args(tag))
         with open(os.path.join(d, "README.md"), "w") as fh:
