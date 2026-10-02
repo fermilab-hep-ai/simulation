@@ -14,7 +14,7 @@ ARG ROOT_VERSION=6.36.02
 # Populated automatically by BuildKit (amd64, arm64, ...); the fallback keeps
 # the Dockerfile working with builders that do not set it.
 ARG TARGETARCH
-ARG COMMIT_HASH=4b2903bede33b2d882174ce8184075497669241c
+ARG COMMIT_HASH=046d85b593b7e59d40cfe11adecb5cf6ae31dd70
 LABEL org.opencontainers.image.version=${DELPHES_VERSION}
 LABEL org.opencontainers.image.ref.name=latest
 ENV DEBIAN_FRONTEND=noninteractive
