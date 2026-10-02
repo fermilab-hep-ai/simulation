@@ -119,6 +119,7 @@ RUN mkdir -p /usr/local/share/delphes && \
     git clone https://github.com/fermilab-hep-ai/delphes.git -b ${DELPHES_VERSION}-puppiw Delphes-${DELPHES_VERSION} && \
     cd Delphes-${DELPHES_VERSION} && \
     git checkout ${COMMIT_HASH} && \
+    ./configure && \
     make -j$(($(nproc) - 1)) && \
     cd ../ && \
     ln -s Delphes-${DELPHES_VERSION} ./delphes
