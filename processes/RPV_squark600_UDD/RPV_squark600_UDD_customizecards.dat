@@ -1,0 +1,135 @@
+# AIDA-Scout S5: light right-handed squarks with prompt RPV UDD decays.
+#
+# THE PDG CODES BELOW ARE NOT THE FLAVOURS THEIR MG5 NAMES SUGGEST.  This UFO's
+# USQMIX / DSQMIX sort the squark mass eigenstates by mass, and with the shipped
+# spectrum the stops and sbottoms come first, so 1000001..1000004 are the
+# sbottoms and stops -- not the down/up/strange/charm squarks.  Setting them to
+# m_squark, as this card used to, put two stops and two sbottoms in the sample.
+# See the comment block above RPV_UDD_PROC_CARD in make_signal_cards.py.
+#
+# Light, at 600 GeV -- the four right-handed light-flavour squarks, the only
+# states the lambda'' UDD operator couples to.  Comments are kept on their own
+# lines: run.sh strips whole-line comments before feeding this to madevent, but
+# NOT trailing ones, and a trailing comment would be parsed as part of the value.
+#   2000002 = u_R (MG5 name 'ur')      1000006 = c_R (MG5 name 't1')
+#   2000001 = d_R (MG5 name 'dr')      1000005 = s_R (MG5 name 'b1')
+set param_card mass 2000002 600
+set param_card mass 1000006 600
+set param_card mass 2000001 600
+set param_card mass 1000005 600
+
+# Decoupled at 800 GeV -- the stops (1000002, 1000004) and sbottoms
+# (1000001, 1000003) ...
+set param_card mass 1000002 800
+set param_card mass 1000004 800
+set param_card mass 1000001 800
+set param_card mass 1000003 800
+
+# ... and the left-handed light-flavour squarks u_L (2000004), c_L (2000006),
+# d_L (2000005) and s_L (2000003), which carry no UDD coupling at all and would
+# otherwise be stable coloured particles.
+set param_card mass 2000004 800
+set param_card mass 2000006 800
+set param_card mass 2000005 800
+set param_card mass 2000003 800
+
+set param_card mass 1000021 800
+
+# Gauginos decoupled ABOVE the squark.  This is essential, not cosmetic: with
+# the UFO defaults the neutralino sits near 100 GeV and the squarks decay
+# predominantly to q + neutralino/chargino, which produces exactly the MET that
+# S5 is supposed not to have (measured before this was set: BR(dl -> b n2) = 1.0,
+# BR(ul -> b x1+) = 0.26).  Pushing them above the squark closes those channels
+# and leaves only the RPV UDD decay open.
+set param_card mass 1000022 800
+set param_card mass 1000023 800
+set param_card mass 1000024 800
+set param_card mass 1000025 800
+set param_card mass 1000035 800
+set param_card mass 1000037 800
+
+# EVERY RPV coupling in ALL THREE blocks is zeroed first.  The UFO ships 0.2 on
+# all of them, and only RVLAMUDD used to be cleared -- leaving lambda' (LQD)
+# fully on, which gives each squark 18 lepton/neutrino modes (d_R -> b nu_e,
+# e- u, mu- c, ...) at roughly 50x the width of the UDD modes.  That is the MET
+# and the leptons S5 exists to avoid, and it drives BR(UDD) to well under 1%.
+set param_card rvlamlle 1 2 1 0.0
+set param_card rvlamlle 1 2 2 0.0
+set param_card rvlamlle 1 2 3 0.0
+set param_card rvlamlle 1 3 1 0.0
+set param_card rvlamlle 1 3 2 0.0
+set param_card rvlamlle 1 3 3 0.0
+set param_card rvlamlle 2 1 1 0.0
+set param_card rvlamlle 2 1 2 0.0
+set param_card rvlamlle 2 1 3 0.0
+set param_card rvlamlle 2 3 1 0.0
+set param_card rvlamlle 2 3 2 0.0
+set param_card rvlamlle 2 3 3 0.0
+set param_card rvlamlle 3 1 1 0.0
+set param_card rvlamlle 3 1 2 0.0
+set param_card rvlamlle 3 1 3 0.0
+set param_card rvlamlle 3 2 1 0.0
+set param_card rvlamlle 3 2 2 0.0
+set param_card rvlamlle 3 2 3 0.0
+set param_card rvlamlqd 1 1 1 0.0
+set param_card rvlamlqd 1 1 2 0.0
+set param_card rvlamlqd 1 1 3 0.0
+set param_card rvlamlqd 1 2 1 0.0
+set param_card rvlamlqd 1 2 2 0.0
+set param_card rvlamlqd 1 2 3 0.0
+set param_card rvlamlqd 1 3 1 0.0
+set param_card rvlamlqd 1 3 2 0.0
+set param_card rvlamlqd 1 3 3 0.0
+set param_card rvlamlqd 2 1 1 0.0
+set param_card rvlamlqd 2 1 2 0.0
+set param_card rvlamlqd 2 1 3 0.0
+set param_card rvlamlqd 2 2 1 0.0
+set param_card rvlamlqd 2 2 2 0.0
+set param_card rvlamlqd 2 2 3 0.0
+set param_card rvlamlqd 2 3 1 0.0
+set param_card rvlamlqd 2 3 2 0.0
+set param_card rvlamlqd 2 3 3 0.0
+set param_card rvlamlqd 3 1 1 0.0
+set param_card rvlamlqd 3 1 2 0.0
+set param_card rvlamlqd 3 1 3 0.0
+set param_card rvlamlqd 3 2 1 0.0
+set param_card rvlamlqd 3 2 2 0.0
+set param_card rvlamlqd 3 2 3 0.0
+set param_card rvlamlqd 3 3 1 0.0
+set param_card rvlamlqd 3 3 2 0.0
+set param_card rvlamlqd 3 3 3 0.0
+set param_card rvlamudd 1 1 3 0.0
+set param_card rvlamudd 1 2 3 0.0
+set param_card rvlamudd 1 3 1 0.0
+set param_card rvlamudd 1 3 2 0.0
+set param_card rvlamudd 2 1 3 0.0
+set param_card rvlamudd 2 2 3 0.0
+set param_card rvlamudd 2 3 1 0.0
+set param_card rvlamudd 2 3 2 0.0
+set param_card rvlamudd 3 1 2 0.0
+set param_card rvlamudd 3 1 3 0.0
+set param_card rvlamudd 3 2 1 0.0
+set param_card rvlamudd 3 2 3 0.0
+set param_card rvlamudd 3 3 1 0.0
+set param_card rvlamudd 3 3 2 0.0
+
+# lambda''_112 (u d s) opens u_R -> d s, d_R -> u s and s_R -> u d.  On its own
+# it leaves c_R with NO open decay -- a stable coloured particle in the event
+# record -- so lambda''_212 (c d s) is switched on as well; it is the lowest
+# operator that couples the charm squark.  Together:
+#     u_R -> d~ s~          c_R -> d~ s~
+#     d_R -> u~ s~, c~ s~   s_R -> u~ d~, c~ d~
+# Every index stays in the first two generations, so there is no top and no
+# genuine MET.  These are now the ONLY non-zero RPV couplings, so
+# BR(squark -> two quarks) = 1 exactly.
+set param_card rvlamudd 1 1 2 0.2
+set param_card rvlamudd 1 2 1 -0.2
+set param_card rvlamudd 2 1 2 0.2
+set param_card rvlamudd 2 2 1 -0.2
+
+# Recompute the widths of the four produced squarks.  This matters for the
+# normalisation, not just the decay table: MG5 forms
+# sigma = sigma_prod x sum(Gamma_i in the ME) / Gamma_total, so Gamma_total has
+# to be the consistently computed one for the reported cross section to be the
+# production cross section.
+compute_widths 2000002 1000006 2000001 1000005

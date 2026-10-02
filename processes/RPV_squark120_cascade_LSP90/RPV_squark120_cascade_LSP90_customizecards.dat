@@ -1,0 +1,115 @@
+# AIDA-Scout S5 cascade: m_squark = 120 GeV, m_LSP = 90 GeV.
+# Compressed by 30 GeV so the quark from squark -> quark + LSP stays soft.
+set param_card mass 1000001 120
+set param_card mass 1000002 120
+set param_card mass 1000003 120
+set param_card mass 1000004 120
+set param_card mass 2000001 120
+set param_card mass 2000002 120
+set param_card mass 2000003 120
+set param_card mass 2000004 120
+
+# Third generation, gluino and the heavier gauginos decoupled.
+set param_card mass 1000005 520
+set param_card mass 1000006 520
+set param_card mass 2000005 520
+set param_card mass 2000006 520
+set param_card mass 1000021 520
+set param_card mass 1000023 520
+set param_card mass 1000024 520
+set param_card mass 1000025 520
+set param_card mass 1000035 520
+set param_card mass 1000037 520
+
+# The LSP.
+set param_card mass 1000022 90
+
+# Every RPV coupling zeroed, then lambda''_112 only -- decays to light quarks,
+# no third generation.  Zeroing RVLAMLQD and RVLAMLLE as well as RVLAMUDD matters
+# for the normalisation guidance below: the UFO ships 0.2 on all three blocks, so
+# with lambda' (LQD) left on the LSP also has lepton and neutrino channels and
+# BR(cascade) is NOT 1.  The generated events are unaffected either way -- the
+# matrix element contains only the cascade and the widths below are set by hand.
+set param_card rvlamlle 1 2 1 0.0
+set param_card rvlamlle 1 2 2 0.0
+set param_card rvlamlle 1 2 3 0.0
+set param_card rvlamlle 1 3 1 0.0
+set param_card rvlamlle 1 3 2 0.0
+set param_card rvlamlle 1 3 3 0.0
+set param_card rvlamlle 2 1 1 0.0
+set param_card rvlamlle 2 1 2 0.0
+set param_card rvlamlle 2 1 3 0.0
+set param_card rvlamlle 2 3 1 0.0
+set param_card rvlamlle 2 3 2 0.0
+set param_card rvlamlle 2 3 3 0.0
+set param_card rvlamlle 3 1 1 0.0
+set param_card rvlamlle 3 1 2 0.0
+set param_card rvlamlle 3 1 3 0.0
+set param_card rvlamlle 3 2 1 0.0
+set param_card rvlamlle 3 2 2 0.0
+set param_card rvlamlle 3 2 3 0.0
+set param_card rvlamlqd 1 1 1 0.0
+set param_card rvlamlqd 1 1 2 0.0
+set param_card rvlamlqd 1 1 3 0.0
+set param_card rvlamlqd 1 2 1 0.0
+set param_card rvlamlqd 1 2 2 0.0
+set param_card rvlamlqd 1 2 3 0.0
+set param_card rvlamlqd 1 3 1 0.0
+set param_card rvlamlqd 1 3 2 0.0
+set param_card rvlamlqd 1 3 3 0.0
+set param_card rvlamlqd 2 1 1 0.0
+set param_card rvlamlqd 2 1 2 0.0
+set param_card rvlamlqd 2 1 3 0.0
+set param_card rvlamlqd 2 2 1 0.0
+set param_card rvlamlqd 2 2 2 0.0
+set param_card rvlamlqd 2 2 3 0.0
+set param_card rvlamlqd 2 3 1 0.0
+set param_card rvlamlqd 2 3 2 0.0
+set param_card rvlamlqd 2 3 3 0.0
+set param_card rvlamlqd 3 1 1 0.0
+set param_card rvlamlqd 3 1 2 0.0
+set param_card rvlamlqd 3 1 3 0.0
+set param_card rvlamlqd 3 2 1 0.0
+set param_card rvlamlqd 3 2 2 0.0
+set param_card rvlamlqd 3 2 3 0.0
+set param_card rvlamlqd 3 3 1 0.0
+set param_card rvlamlqd 3 3 2 0.0
+set param_card rvlamlqd 3 3 3 0.0
+set param_card rvlamudd 1 1 3 0.0
+set param_card rvlamudd 1 2 3 0.0
+set param_card rvlamudd 1 3 1 0.0
+set param_card rvlamudd 1 3 2 0.0
+set param_card rvlamudd 2 1 2 0.0
+set param_card rvlamudd 2 1 3 0.0
+set param_card rvlamudd 2 2 1 0.0
+set param_card rvlamudd 2 2 3 0.0
+set param_card rvlamudd 2 3 1 0.0
+set param_card rvlamudd 2 3 2 0.0
+set param_card rvlamudd 3 1 2 0.0
+set param_card rvlamudd 3 1 3 0.0
+set param_card rvlamudd 3 2 1 0.0
+set param_card rvlamudd 3 2 3 0.0
+set param_card rvlamudd 3 3 1 0.0
+set param_card rvlamudd 3 3 2 0.0
+
+set param_card rvlamudd 1 1 2 1.0e-2
+set param_card rvlamudd 1 2 1 -1.0e-2
+
+# Explicit non-zero widths, required or MG5 cannot build the propagator in the
+# decay chain.
+#
+# WARNING -- THESE INVALIDATE THE CROSS SECTION MG5 REPORTS.  For a decay chain
+# MG5 forms sigma = sigma_production x Gamma_partial / Gamma_total, so supplying
+# Gamma_total by hand makes the reported number arbitrary.  Measured symptom:
+# the quoted cross section is NOT monotonic in the squark mass (13.42 pb at
+# m = 150 against 0.0998 pb at m = 120), which is backwards for production and is
+# the artifact, not physics.
+#
+# Normalise instead as
+#     sigma_sample = sigma(p p > ur ur~) x BR(cascade)
+# with BR(cascade) = 1 to a good approximation here: only lambda''_112 is on and
+# the LSP sits below the squark, so the cascade is effectively the only channel.
+# Generate 'p p > ur ur~' on its own to get the production cross section.
+set param_card decay 1000002 1.5
+set param_card decay 2000002 1.5
+set param_card decay 1000022 0.1

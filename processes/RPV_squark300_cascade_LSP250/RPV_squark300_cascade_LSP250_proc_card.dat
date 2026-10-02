@@ -1,0 +1,12 @@
+import model _SIMDIR_/models/RPVMSSM_UFO_Wn1
+
+# Squark pair with the full cascade in the matrix element:
+#   ur     -> u  + n1,  n1 -> u  d  s     (lambda''_112 UDD)
+#   ur~    -> u~ + n1,  n1 -> u~ d~ s~
+# Eight partons at the hard-process level.  Restricted to the right-handed up
+# squark, the only flavour lambda''_112 couples to; see the point README for why
+# the decays are here rather than in the decay table.
+
+generate p p > ur ur~, (ur > u n1, n1 > u d s), (ur~ > u~ n1, n1 > u~ d~ s~)
+
+output _OUTDIR_
