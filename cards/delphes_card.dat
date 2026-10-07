@@ -134,6 +134,7 @@ set ExecutionPath {
   L1TPhotonEnergySmearing
   L1TElectronFilter
   
+  L1TPrimaryVertexFinder
   L1TTrackPileUpSubtractor
   L1TRecoPuFilter
 
@@ -3011,13 +3012,40 @@ module PdgCodeFilter L1TElectronFilter {
 #########################
 # L1 track pile-up subtractor  (NEW)
 #########################
+###############################################################################
+# L1 primary vertex: CMS fastHisto (L1Trigger/VertexFinder), via delphes
+# PrimaryVertexFinder. Without it the L1T chain uses the generator signal
+# vertex, which in a minimum-bias event is a typical soft interaction rather
+# than the hardest one, as the L1 vertex finder would pick.
+#
+# Tracks above 2 GeV fill a z0 histogram weighted by saturated pt; the 3-bin
+# window with the largest sum wins, and the primary vertex is the interaction
+# contributing the most track pt to it. The output is the full vertex
+# collection with the chosen vertex first and IsPU = 0, so the track pile-up
+# subtraction and PUPPI below use it as the primary vertex. CMS defaults,
+# converted from cm to mm.
+###############################################################################
+
+module PrimaryVertexFinder L1TPrimaryVertexFinder {
+  set VertexInputArray PileUpMerger/vertices
+  set TrackInputArray  L1THCal/eflowTracks
+  set Method           FastHisto
+  set MinTrackPt       2.0
+  set MaxTrackPt       127.0
+  set HistogramMin     -204.6912512
+  set HistogramMax      204.6912512
+  set BinWidth          1.5991504
+  set WindowSize        3
+  set OutputArray      vertices
+}
+
 module TrackPileUpSubtractor L1TTrackPileUpSubtractor {
   # charged-track input straight out of L1THCal
   add InputArray  L1THCal/eflowTracks           eflowTracks
   add InputArray  L1TElectronFilter/electrons   electrons
   add InputArray  L1TMuonMomentumSmearing/muons muons
 
-  set VertexInputArray  PileUpMerger/vertices   ;# same PV collection as offline
+  set VertexInputArray  L1TPrimaryVertexFinder/vertices   ;# L1 vertex finder, not the generator vertex
   # 10x worse z-resolution formula offline
   set ZVertexResolution {
        (pt < 10.) * (((-0.8*log10(pt)+1.)*(10^(0.5*abs(eta)+1.5))*1e-06)*10) +
@@ -3107,29 +3135,70 @@ module PdgCodeFilter L1TLeptonFilterLep {
   add PdgCode {-13}
 }
 
-module RunPUPPI L1TRunPUPPIBase {
-  ## input information
+###############################################################################
+# L1T PUPPI: CMS Phase-2 correlator PUPPI (LinPuppiEmulator), via delphes
+# RunL1TPUPPI, in place of the offline RunPUPPI algorithm. Same module name and
+# outputs, so the merger, filters, jets, MET and the L1TEFlowPuppi branch are
+# unchanged downstream.
+#
+# RunPUPPI compares each neutral's alpha to a per-event median of charged
+# pile-up alpha, which the 2 GeV L1 track threshold leaves too sparse to
+# measure; an alpha of 0 (no PV track nearby) gives weight 0 whatever the pt.
+# The firmware instead uses fixed constants: cropped alpha term plus pt term
+# through a logistic. The form and regions follow l1ctLayer1_cff.py:
+#
+#   0.0 - 1.5   l1tLayer1Barrel
+#   1.5 - 2.0   l1tLayer1HGCal      (absEtaCuts bin 0)
+#   2.0 - 2.4   l1tLayer1HGCal      (absEtaCuts bin 1)
+#   2.4 - 3.0   l1tLayer1HGCalNoTK  (alpha from the neutrals)
+#   3.0 - 10.0  l1tLayer1HF         (alpha from the neutrals)
+#
+# The constants are retuned on Delphes inputs (ttbar, 200 PU). The CMS values
+# are tuned to CMS L1 calorimeter clusters; on Delphes towers their neutral-
+# hadron priors put a 7-14 GeV floor under neutral hadrons, losing about half
+# their energy in jets. Tuned for the best pile-up-offset-corrected jet
+# resolution and efficiency, with MET resolution and the pile-up neutral
+# energy kept per region no worse than RunPUPPI. CMS defaults, for reference:
+#   PtSlopeBin 0.3 0.3 0.3 0.3 0.25   PtSlopePhotonBin 0.3 0.4 0.4 0.4 0.25
+#   AlphaSlopeBin 0.7 1.5 1.5 2.2 0.6 AlphaCropBin 4 3 3 4 4
+#   PriorBin 5 5 5 7 6                PriorPhotonBin 1 1.5 1.5 5 6
+# AlphaZeroBin, PtZeroBin, PtZeroPhotonBin and PtCutBin are the CMS values.
+#
+# Neutrals whose weighted pt falls below PtCutBin get puppiW = 0, as the
+# firmware drops them. Deviations from CMS: the tracker boundary is 2.4 rather
+# than 2.5 because L1TChargedHadronTrackingEfficiency is zero above 2.4; the HF
+# bin extends to 10.0 to cover the same range as before, since a candidate in
+# no region gets puppiW = 0; and DeltaZMax is left at -1 so the track-to-PV
+# association comes from IsRecoPU, set by L1TTrackPileUpSubtractor with the
+# L1 vertex above (CMS uses 5 mm in the barrel, 13.3 mm in the endcap).
+###############################################################################
+
+module RunL1TPUPPI L1TRunPUPPIBase {
   set TrackInputArray   L1TLeptonFilterNoLep/eflowTracksNoLeptons
   set NeutralInputArray L1TNeutralEFlowMerger/eflowTowers
-  set PVInputArray      PileUpMerger/vertices
-  set MinPuppiWeight    0.05
-  set UseExp            false
-  set UseNoLep          false
+  set PVInputArray      L1TPrimaryVertexFinder/vertices
 
-  ## define puppi algorithm parameters (more than one for the same eta region is possible)
-  add EtaMinBin           0.0   1.5   2.5   3.0
-  add EtaMaxBin           1.5   2.5   3.0   10.0 
-  add PtMinBin            0.0   0.0   0.0   0.0
-  add ConeSizeBin         0.3   0.3   0.3   0.3
-  add RMSPtMinBin         0.1   0.5   0.5   0.5
-  add RMSScaleFactorBin   1.0   1.0   1.0   1.0
-  add NeutralMinEBin      1.0   1.0   4.0   10.0
-  add NeutralPtSlope      0.006 0.013 0.03  0.03
-  add ApplyCHS            true  true  true  true
-  add UseCharged          true  true  false false
-  add ApplyLowPUCorr      true  true  true  true
-  add MetricId            5     5     5     5
-  add CombId              0     0     0     0 
+  ## <= 0 : take the track-to-PV association from IsRecoPU (TrackPileUpSubtractor)
+  ##  > 0 : explicit |dz| cut in mm, as the firmware does
+  set DeltaZMax        -1.0
+
+  ##                      barrel  HGCal   HGCal   NoTK    HF
+  add EtaMinBin           0.0     1.5     2.0     2.4     3.0
+  add EtaMaxBin           1.5     2.0     2.4     3.0     10.0
+  add UseTracks           true    true    true    false   false
+  add ConeSizeBin         0.3     0.3     0.3     0.3     0.3
+  add ConeSizeMinBin      0.07    0.04    0.04    0.04    0.1
+  add PtMaxBin            50.0    50.0    50.0    50.0    100.0
+  add PtCutBin            1.0     1.0     2.0     4.0     10.0
+  add PtSlopeBin          0.3     0.45    0.3     0.3     0.45
+  add PtSlopePhotonBin    0.3     0.2     0.2     0.3     0.3
+  add PtZeroBin           4.0     5.0     7.0     9.0     14.0
+  add PtZeroPhotonBin     2.5     3.0     4.0     5.0     14.0
+  add AlphaSlopeBin       0.7     3.0     2.0     3.0     3.0
+  add AlphaZeroBin        6.0     6.0     6.0     9.0     9.0
+  add AlphaCropBin        3.0     3.0     3.0     3.0     6.0
+  add PriorBin            1.0     3.0     1.0     0.0     0.0
+  add PriorPhotonBin      1.0     -1.0    -1.0    4.0     2.0
 
   ## output name
   set OutputArray         PuppiParticles
