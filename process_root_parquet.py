@@ -59,7 +59,7 @@ SAFE_INT32 = {
 # Keep only the N highest‑pT PF candidates **per event** to control file size.
 MAX_PF_PER_EVENT = 1000 #128 for L1T 
 # PF_COLLECTION_KEYS = ()
-PF_COLLECTION_KEYS = ("PFPart", "PUPPIPart")  # collections to be trimmed
+PF_COLLECTION_KEYS = ("PFPart", "PUPPIPart", "PUPPIPartLin")  # collections to be trimmed
 
 logging.basicConfig(
     format="%(asctime)s — %(levelname)s — %(message)s",
@@ -96,6 +96,17 @@ COLLECTIONS = {
     # PUPPI and PF candidates
     "PUPPIPart": {
         "prefix": "EFlowPuppi",
+        "vars": [
+            "PT", "Eta", "Phi", "E", "Charge", "Mass", "PID",
+            "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID", "PuppiW", "IsPU", "IsRecoPU"
+        ],
+    },
+
+    # CMS Phase-2 L1 PUPPI (delphes RunL1TPUPPI), written as L1TEFlowPuppiLin.
+    # Only the L1T chain produces it, so the FullReco view is skipped.
+    "PUPPIPartLin": {
+        "prefix": "EFlowPuppiLin",
+        "l1t_only": True,
         "vars": [
             "PT", "Eta", "Phi", "E", "Charge", "Mass", "PID",
             "D0", "DZ", "ErrorD0", "ErrorDZ", "fUniqueID", "PuppiW", "IsPU", "IsRecoPU"
@@ -336,6 +347,8 @@ def write_collection(tree, table_data, l1t=False):
     logging.info("Processing %s collections …", tag)
 
     for coll_key, cfg in COLLECTIONS.items():
+        if cfg.get("l1t_only") and not l1t:
+            continue
         coll_prefix = cfg["prefix"]
         vars_ = cfg["vars"]
 

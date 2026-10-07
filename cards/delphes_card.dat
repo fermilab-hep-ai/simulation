@@ -149,6 +149,8 @@ set ExecutionPath {
   L1TRunPUPPIBase
   L1TRunPUPPIMerger
   L1TRunPUPPI
+  L1TRunPUPPILin
+  L1TRunPUPPILinMerger
 
   L1TEFlowFilterPuppi
   L1TEFlowFilterCHS
@@ -3146,6 +3148,73 @@ module Merger L1TRunPUPPIMerger {
 # need this because of leptons that were added back
 module RecoPuFilter L1TRunPUPPI {
   set InputArray L1TRunPUPPIMerger/PuppiParticles
+  set OutputArray PuppiParticles
+}
+
+###############################################################################
+# CMS Phase-2 Level-1 PUPPI (LinPuppi), from delphes RunL1TPUPPI
+#
+# Written alongside the existing L1T PUPPI as its own collection
+# (L1TEFlowPuppiLin); L1TRunPUPPI above is unchanged and still feeds the L1T
+# PUPPI jets, MET and isolation.
+#
+# Unlike RunPUPPI, this does not estimate a per-event median of the charged
+# pile-up alpha distribution, which the 2 GeV L1 track threshold leaves too
+# sparse to measure. It follows the CMS correlator emulator
+# (L1Trigger/Phase2L1ParticleFlow, LinPuppiEmulator): cropped alpha term plus
+# pt term through a logistic, with fixed constants from l1ctLayer1_cff.py,
+# mapped onto these eta regions:
+#
+#   0.0 - 1.5   l1tLayer1Barrel
+#   1.5 - 2.0   l1tLayer1HGCal      (absEtaCuts bin 0)
+#   2.0 - 2.4   l1tLayer1HGCal      (absEtaCuts bin 1)
+#   2.4 - 3.0   l1tLayer1HGCalNoTK  (alpha from the neutrals)
+#   3.0 - 10.0  l1tLayer1HF         (alpha from the neutrals)
+#
+# Deviations from CMS: the tracker boundary is 2.4 rather than 2.5 because
+# L1TChargedHadronTrackingEfficiency is zero above 2.4; the HF bin extends to
+# 10.0 to cover the same range as L1TRunPUPPIBase, since a candidate in no
+# region gets puppiW = 0; and DeltaZMax is one global value (CMS uses 5 mm in
+# the barrel, 13.3 mm in the endcap) left at -1 so the track-to-PV association
+# comes from IsRecoPU, as in the rest of the L1T chain.
+###############################################################################
+
+module RunL1TPUPPI L1TRunPUPPILin {
+  set TrackInputArray   L1TLeptonFilterNoLep/eflowTracksNoLeptons
+  set NeutralInputArray L1TNeutralEFlowMerger/eflowTowers
+  set PVInputArray      PileUpMerger/vertices
+
+  ## <= 0 : take the track-to-PV association from IsRecoPU (TrackPileUpSubtractor)
+  ##  > 0 : explicit |dz| cut in mm, as the firmware does
+  set DeltaZMax        -1.0
+
+  ##                      barrel  HGCal   HGCal   NoTK    HF
+  add EtaMinBin           0.0     1.5     2.0     2.4     3.0
+  add EtaMaxBin           1.5     2.0     2.4     3.0     10.0
+  add UseTracks           true    true    true    false   false
+  add ConeSizeBin         0.3     0.3     0.3     0.3     0.3
+  add ConeSizeMinBin      0.07    0.04    0.04    0.04    0.1
+  add PtMaxBin            50.0    50.0    50.0    50.0    100.0
+  add PtCutBin            1.0     1.0     2.0     4.0     10.0
+  add PtSlopeBin          0.3     0.3     0.3     0.3     0.25
+  add PtSlopePhotonBin    0.3     0.4     0.4     0.4     0.25
+  add PtZeroBin           4.0     5.0     7.0     9.0     14.0
+  add PtZeroPhotonBin     2.5     3.0     4.0     5.0     14.0
+  add AlphaSlopeBin       0.7     1.5     1.5     2.2     0.6
+  add AlphaZeroBin        6.0     6.0     6.0     9.0     9.0
+  add AlphaCropBin        4.0     3.0     3.0     4.0     4.0
+  add PriorBin            5.0     5.0     5.0     7.0     6.0
+  add PriorPhotonBin      1.0     1.5     1.5     5.0     6.0
+
+  set OutputArray         PuppiParticles
+  set OutputArrayTracks   puppiTracks
+  set OutputArrayNeutrals puppiNeutrals
+}
+
+## put the leptons back, as L1TRunPUPPIMerger does for L1TRunPUPPIBase
+module Merger L1TRunPUPPILinMerger {
+  add InputArray L1TRunPUPPILin/PuppiParticles
+  add InputArray L1TLeptonFilterLep/eflowTracksLeptons
   set OutputArray PuppiParticles
 }
 
@@ -9688,6 +9757,7 @@ module TreeWriter TreeWriter {
   add Branch L1THCal/eflowNeutralHadrons L1TEFlowNeutralHadron Tower
 
   add Branch L1TRunPUPPIMerger/PuppiParticles L1TEFlowPuppi ParticleFlowCandidate
+  add Branch L1TRunPUPPILinMerger/PuppiParticles L1TEFlowPuppiLin ParticleFlowCandidate
 
   add Branch L1TEFlowMerger/eflow L1TEFlow ParticleFlowCandidate
 #  add Branch L1TEFlowMergerCHS/eflow L1TEFlowCHS ParticleFlowCandidate
