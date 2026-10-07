@@ -3145,13 +3145,24 @@ module PdgCodeFilter L1TLeptonFilterLep {
 # pile-up alpha, which the 2 GeV L1 track threshold leaves too sparse to
 # measure; an alpha of 0 (no PV track nearby) gives weight 0 whatever the pt.
 # The firmware instead uses fixed constants: cropped alpha term plus pt term
-# through a logistic, from l1ctLayer1_cff.py, mapped onto these regions:
+# through a logistic. The form and regions follow l1ctLayer1_cff.py:
 #
 #   0.0 - 1.5   l1tLayer1Barrel
 #   1.5 - 2.0   l1tLayer1HGCal      (absEtaCuts bin 0)
 #   2.0 - 2.4   l1tLayer1HGCal      (absEtaCuts bin 1)
 #   2.4 - 3.0   l1tLayer1HGCalNoTK  (alpha from the neutrals)
 #   3.0 - 10.0  l1tLayer1HF         (alpha from the neutrals)
+#
+# The constants are retuned on Delphes inputs (ttbar, 200 PU). The CMS values
+# are tuned to CMS L1 calorimeter clusters; on Delphes towers their neutral-
+# hadron priors put a 7-14 GeV floor under neutral hadrons, losing about half
+# their energy in jets. Tuned for the best pile-up-offset-corrected jet
+# resolution and efficiency, with MET resolution and the pile-up neutral
+# energy kept per region no worse than RunPUPPI. CMS defaults, for reference:
+#   PtSlopeBin 0.3 0.3 0.3 0.3 0.25   PtSlopePhotonBin 0.3 0.4 0.4 0.4 0.25
+#   AlphaSlopeBin 0.7 1.5 1.5 2.2 0.6 AlphaCropBin 4 3 3 4 4
+#   PriorBin 5 5 5 7 6                PriorPhotonBin 1 1.5 1.5 5 6
+# AlphaZeroBin, PtZeroBin, PtZeroPhotonBin and PtCutBin are the CMS values.
 #
 # Neutrals whose weighted pt falls below PtCutBin get puppiW = 0, as the
 # firmware drops them. Deviations from CMS: the tracker boundary is 2.4 rather
@@ -3179,15 +3190,15 @@ module RunL1TPUPPI L1TRunPUPPIBase {
   add ConeSizeMinBin      0.07    0.04    0.04    0.04    0.1
   add PtMaxBin            50.0    50.0    50.0    50.0    100.0
   add PtCutBin            1.0     1.0     2.0     4.0     10.0
-  add PtSlopeBin          0.3     0.3     0.3     0.3     0.25
-  add PtSlopePhotonBin    0.3     0.4     0.4     0.4     0.25
+  add PtSlopeBin          0.3     0.45    0.3     0.3     0.45
+  add PtSlopePhotonBin    0.3     0.2     0.2     0.3     0.3
   add PtZeroBin           4.0     5.0     7.0     9.0     14.0
   add PtZeroPhotonBin     2.5     3.0     4.0     5.0     14.0
-  add AlphaSlopeBin       0.7     1.5     1.5     2.2     0.6
+  add AlphaSlopeBin       0.7     3.0     2.0     3.0     3.0
   add AlphaZeroBin        6.0     6.0     6.0     9.0     9.0
-  add AlphaCropBin        4.0     3.0     3.0     4.0     4.0
-  add PriorBin            5.0     5.0     5.0     7.0     6.0
-  add PriorPhotonBin      1.0     1.5     1.5     5.0     6.0
+  add AlphaCropBin        3.0     3.0     3.0     3.0     6.0
+  add PriorBin            1.0     3.0     1.0     0.0     0.0
+  add PriorPhotonBin      1.0     -1.0    -1.0    4.0     2.0
 
   ## output name
   set OutputArray         PuppiParticles
