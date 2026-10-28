@@ -1,0 +1,251 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+
+permissions:
+  contents: read
+  pull-requests: read # paths-filter lists a PR's files through the API
+
+# A new push to a PR supersedes its running checks (the arm64 image build alone
+# takes over an hour). Pushes to main are never cancelled mid-publish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: jmduarte/mapyde
+  # Processes the pipeline test runs end to end through run.sh, and how many
+  # events each. They use MLM matching, so slightly fewer events than requested
+  # survive the shower; ci/check_parquet.py allows for that. Keep the
+  # "pipeline" path filter below in step with this list.
+  PIPELINE_PROCESSES: DYJetsToLL_13TeV-madgraphMLM-pythia8
+  PIPELINE_NEVENTS: 20
+
+jobs:
+  # Decides what the rest of the workflow does:
+  #   build           the image's inputs changed (or a manual run)
+  #   publish         push the image to DockerHub -- only from main, the one
+  #                   place the DockerHub secrets are needed; PRs, including
+  #                   those from forks, only check that the image builds
+  #   pipeline_image  the image the standalone pipeline test runs: the one this
+  #                   run publishes, or :latest if the image did not change.
+  #                   Empty when an unpublished image is built, because the
+  #                   amd64 build job then tests it itself.
+  changes:
+    name: decide what to run
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.plan.outputs.build }}
+      publish: ${{ steps.plan.outputs.publish }}
+      pipeline_image: ${{ steps.plan.outputs.pipeline_image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Find changed files
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            image:
+              - 'docker/**'
+              - 'models/**'
+              - '.github/workflows/ci.yml'
+            pipeline:
+              - 'run.sh'
+              - 'cards/**'
+              - '*.cc'
+              - 'process_root_parquet.py'
+              - 'processes/DYJetsToLL_13TeV-madgraphMLM-pythia8/**'
+              - 'ci/**'
+              - '.github/workflows/ci.yml'
+      - name: Plan
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          IMAGE_CHANGED: ${{ steps.filter.outputs.image }}
+          PIPELINE_CHANGED: ${{ steps.filter.outputs.pipeline }}
+        run: |
+          build=false
+          publish=false
+          pipeline_image=
+          if [ "$EVENT" != pull_request ] && [ "$REF" = refs/heads/main ]; then
+            publish=true
+          fi
+          if [ "$EVENT" = workflow_dispatch ] || [ "$IMAGE_CHANGED" = true ]; then
+            build=true
+          fi
+          if [ "$build" = true ]; then
+            if [ "$publish" = true ]; then
+              pipeline_image="${IMAGE}:${GITHUB_SHA}"
+            fi
+          elif [ "$PIPELINE_CHANGED" = true ]; then
+            pipeline_image="${IMAGE}:latest"
+          fi
+          echo "build=${build} publish=${publish} pipeline_image=${pipeline_image:-(none)}"
+          {
+            echo "build=${build}"
+            echo "publish=${publish}"
+            echo "pipeline_image=${pipeline_image}"
+          } >> "$GITHUB_OUTPUT"
+
+  # Build each architecture on a native runner (no QEMU). When publishing, push
+  # it by digest only; the merge job stitches the digests into one multi-arch
+  # tag. Otherwise build without credentials, and on amd64 load the image and
+  # run the pipeline test on it.
+  build:
+    name: build (${{ matrix.platform }})
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            pipeline_test: true
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            pipeline_test: false
+    env:
+      PUBLISH: ${{ needs.changes.outputs.publish }}
+      TEST_HERE: ${{ needs.changes.outputs.publish != 'true' && matrix.pipeline_test }}
+    steps:
+      - name: Prepare
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          if [ "$PUBLISH" = true ]; then
+            out="type=image,name=${IMAGE},push-by-digest=true,name-canonical=true,push=true"
+          elif [ "$TEST_HERE" = true ]; then
+            out="type=docker,name=mapyde:ci" # loaded for the pipeline test
+          else
+            out="type=cacheonly" # build check only
+          fi
+          echo "BUILD_OUTPUT=${out}" >> $GITHUB_ENV
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Free disk space
+        if: env.TEST_HERE == 'true'
+        run: |
+          # Headroom for the build cache, the loaded image and a pipeline run,
+          # which share the runner's disk with its preinstalled SDKs.
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to DockerHub
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          outputs: ${{ env.BUILD_OUTPUT }}
+      - name: Run the generation pipeline
+        if: env.TEST_HERE == 'true'
+        timeout-minutes: 90
+        run: |
+          for process in $PIPELINE_PROCESSES; do
+            ci/run_pipeline_test.sh mapyde:ci "$process" "$PIPELINE_NEVENTS"
+          done
+      - name: Upload pipeline outputs
+        if: env.TEST_HERE == 'true' && !cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-test
+          path: |
+            ${{ runner.temp }}/pipeline/*/*.log
+            ${{ runner.temp }}/pipeline/*/outdir/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Export digest
+        if: env.PUBLISH == 'true'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+      - name: Upload digest
+        if: env.PUBLISH == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: merge manifests
+    needs: [changes, build]
+    if: needs.changes.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t "${IMAGE}:${GITHUB_SHA}" -t "${IMAGE}:latest" \
+            $(printf "${IMAGE}@sha256:%s " *)
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect "${IMAGE}:${GITHUB_SHA}"
+
+  # The pipeline test for every case the amd64 build job does not cover: the
+  # image this run just published, or :latest when the image did not change.
+  # Pulling a public image needs no credentials, so this also runs for forks.
+  pipeline-test:
+    name: pipeline test
+    needs: [changes, merge]
+    if: ${{ !cancelled() && !failure() && needs.changes.outputs.pipeline_image != '' }}
+    runs-on: ubuntu-latest
+    env:
+      PIPELINE_IMAGE: ${{ needs.changes.outputs.pipeline_image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Pull the image
+        run: docker pull "$PIPELINE_IMAGE"
+      - name: Run the generation pipeline
+        timeout-minutes: 90
+        run: |
+          for process in $PIPELINE_PROCESSES; do
+            ci/run_pipeline_test.sh "$PIPELINE_IMAGE" "$process" "$PIPELINE_NEVENTS"
+          done
+      - name: Upload pipeline outputs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-test
+          path: |
+            ${{ runner.temp }}/pipeline/*/*.log
+            ${{ runner.temp }}/pipeline/*/outdir/
+          if-no-files-found: warn
+          retention-days: 7

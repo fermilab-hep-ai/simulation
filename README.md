@@ -32,6 +32,23 @@ compiles ROOT from source and takes considerably longer than an `amd64` one. If
 you would rather not wait, you can run the `amd64` image under emulation instead
 with `--platform linux/amd64`, at a significant runtime performance cost.
 
+### Continuous integration
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs only what a change needs:
+
+- **Image build** when `docker/`, `models/` or the workflow change. Pull requests,
+  including those from forks, build both architectures without DockerHub
+  credentials; only pushes to `main` publish `jmduarte/mapyde:latest`.
+- **Pipeline test** when the pipeline changes (`run.sh`, `cards/`, the Pythia
+  drivers, `process_root_parquet.py`, the tested process, `ci/`), or when the
+  image is rebuilt. It runs `run.sh` in the container for a few events and checks
+  the resulting parquet with [`ci/check_parquet.py`](ci/check_parquet.py). It uses
+  the freshly built image if there is one, and `:latest` otherwise.
+
+The same test can be run locally against any image:
+```bash
+ci/run_pipeline_test.sh jmduarte/mapyde:latest DYJetsToLL_13TeV-madgraphMLM-pythia8 20
+```
+
 ### Running sample generation locally
 Finally, run the `run.sh` command with the Docker image
 ```bash
