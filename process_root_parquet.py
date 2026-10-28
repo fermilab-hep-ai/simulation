@@ -235,8 +235,13 @@ L1T_RENAME = {
     # "L1TParticle" not found
     # "L1TGenJet" not found
     # "L1TGenJetAK8" not found
-    # "L1TVertex" not found
 }
+
+# The L1T card writes only the L1 primary vertex (L1TPrimaryVertexSelector ->
+# L1TVertex, one entry per event). Only Z (truth z of the chosen interaction) and
+# Index (which interaction it is: 0 = signal) mean anything for it; X/Y/T/NDF/
+# SumPT2 are generator-level properties of that interaction, not L1 quantities.
+L1T_VERTEX_VARS = ["Z", "Index"]
 
 ################################################################################
 #                               CORE  UTILITIES                                #
@@ -338,6 +343,8 @@ def write_collection(tree, table_data, l1t=False):
     for coll_key, cfg in COLLECTIONS.items():
         coll_prefix = cfg["prefix"]
         vars_ = cfg["vars"]
+        if l1t and coll_key == "Vertex":
+            vars_ = L1T_VERTEX_VARS
 
         # If we're on the L1T view, rewrite the Delphes collection prefix if needed
         tree_prefix = L1T_RENAME.get(coll_prefix, coll_prefix)
@@ -392,7 +399,9 @@ def write_collection(tree, table_data, l1t=False):
         else:
             sort_var = "PT"
 
-        if sort_var not in arrays:
+        if l1t and coll_key == "Vertex":
+            sorted_arrays = arrays  # single L1 PV per event; nothing to sort
+        elif sort_var not in arrays:
             logging.warning(f"Sort variable {sort_var} missing in {coll_key}, skipping sort.")
             sorted_arrays = arrays
         else:
@@ -450,9 +459,10 @@ def write_collection(tree, table_data, l1t=False):
                 colname = colname.replace("Gen", "Gen_")
                 print(colname)
             
-            #make separate collection also for vertex
+            #make separate collection also for vertex; the L1T view holds only
+            #the L1 primary vertex and must not overwrite the full-reco Vertex_*
             elif coll_key.startswith("Vertex"):
-                colname = f"Vertex_{var}" 
+                colname = f"L1T_PV_{var}" if l1t else f"Vertex_{var}"
                 print(colname)
             
             elif coll_key.startswith("EventInfo"):

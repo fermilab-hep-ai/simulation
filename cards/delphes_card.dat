@@ -135,6 +135,7 @@ set ExecutionPath {
   L1TElectronFilter
   
   L1TPrimaryVertexFinder
+  L1TPrimaryVertexSelector
   L1TTrackPileUpSubtractor
   L1TRecoPuFilter
 
@@ -3039,6 +3040,15 @@ module PrimaryVertexFinder L1TPrimaryVertexFinder {
   set OutputArray      vertices
 }
 
+# Keep only the chosen L1 vertex (IsPU == 0). TreeWriter re-sorts vertex
+# collections by SumPT2, so this is the only way to write out which vertex the
+# L1 chain used.
+module PdgCodeFilter L1TPrimaryVertexSelector {
+  set InputArray       L1TPrimaryVertexFinder/vertices
+  set OutputArray      primaryVertex
+  set RequireNotPileup true
+}
+
 module TrackPileUpSubtractor L1TTrackPileUpSubtractor {
   # charged-track input straight out of L1THCal
   add InputArray  L1THCal/eflowTracks           eflowTracks
@@ -3046,10 +3056,10 @@ module TrackPileUpSubtractor L1TTrackPileUpSubtractor {
   add InputArray  L1TMuonMomentumSmearing/muons muons
 
   set VertexInputArray  L1TPrimaryVertexFinder/vertices   ;# L1 vertex finder, not the generator vertex
-  # 10x worse z-resolution formula offline
+  # track-to-PV association window, CMS correlator linpuppi dZ
+  # (l1ctLayer1_cff.py): 0.5 cm barrel |eta|<1.5, 1.33 cm HGCal. In m.
   set ZVertexResolution {
-       (pt < 10.) * (((-0.8*log10(pt)+1.)*(10^(0.5*abs(eta)+1.5))*1e-06)*10) +
-       (pt >=10.) * ((0.2*(10^(0.5*abs(eta)+1.5))*1e-06)*10)
+       (abs(eta) < 1.5) * 0.005 + (abs(eta) >= 1.5) * 0.0133
   }
 }
 
@@ -3170,7 +3180,9 @@ module PdgCodeFilter L1TLeptonFilterLep {
 # bin extends to 10.0 to cover the same range as before, since a candidate in
 # no region gets puppiW = 0; and DeltaZMax is left at -1 so the track-to-PV
 # association comes from IsRecoPU, set by L1TTrackPileUpSubtractor with the
-# L1 vertex above (CMS uses 5 mm in the barrel, 13.3 mm in the endcap).
+# L1 vertex and the CMS window above (5 mm in the barrel, 13.3 mm in the
+# endcap). The constants were tuned with a narrower window (offline z
+# resolution x10); with the CMS window more pile-up tracks count as PV.
 ###############################################################################
 
 module RunL1TPUPPI L1TRunPUPPIBase {
@@ -9751,6 +9763,9 @@ module TreeWriter TreeWriter {
   add Branch ScalarHT/energy ScalarHT ScalarHT
 
   # L1T
+
+  # the single L1 primary vertex (one entry per event)
+  add Branch L1TPrimaryVertexSelector/primaryVertex L1TVertex Vertex
 
   add Branch L1THCal/eflowTracks L1TEFlowTrack Track
   add Branch L1TECal/eflowPhotons L1TEFlowPhoton Tower
