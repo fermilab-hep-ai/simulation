@@ -15,6 +15,10 @@ ARG ROOT_VERSION=6.36.02
 # the Dockerfile working with builders that do not set it.
 ARG TARGETARCH
 ARG COMMIT_HASH=046d85b593b7e59d40cfe11adecb5cf6ae31dd70
+# luaposix/luafilesystem are cloned from GitHub; pin them so upstream changes
+# can't break the build (luaposix v38 removed the build-aux/luke script used below).
+ARG LUAPOSIX_VERSION=v37.0
+ARG LUAFILESYSTEM_COMMIT=146ab458e821cd7617892099fe8e6e399b46185c
 LABEL org.opencontainers.image.version=${DELPHES_VERSION}
 LABEL org.opencontainers.image.ref.name=latest
 ENV DEBIAN_FRONTEND=noninteractive
@@ -359,7 +363,7 @@ RUN curl -L -R -O https://www.lua.org/ftp/lua-5.4.7.tar.gz && \
     cd .. && \
     rm -r lua-5.4.7
 # Clone and install luaposix in the correct location
-RUN git clone https://github.com/luaposix/luaposix.git && \
+RUN git clone --depth 1 -b ${LUAPOSIX_VERSION} https://github.com/luaposix/luaposix.git && \
     cd luaposix && \
     lua build-aux/luke LUA=/bin/lua LUA_INCDIR=/include PREFIX=/usr INST_LIBDIR=/usr/lib64/lua/5.4 INST_LUADIR=/usr/share/lua/5.4 && \
     lua build-aux/luke LUA=/bin/lua LUA_INCDIR=/include PREFIX=/usr INST_LIBDIR=/usr/lib64/lua/5.4 INST_LUADIR=/usr/share/lua/5.4 install && \
@@ -368,6 +372,7 @@ RUN git clone https://github.com/luaposix/luaposix.git && \
 # Clone, configure and install luafilesystem in the correct location
 RUN git clone https://github.com/lunarmodules/luafilesystem.git && \
     cd luafilesystem && \
+    git checkout ${LUAFILESYSTEM_COMMIT} && \
     CONFIG_FILE="config" && \
     NEW_PREFIX="/usr" && \
     NEW_LUA_VERSION="5.4" && \
