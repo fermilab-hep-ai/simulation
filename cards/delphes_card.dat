@@ -3182,7 +3182,12 @@ module PdgCodeFilter L1TLeptonFilterLep {
 # association comes from IsRecoPU, set by L1TTrackPileUpSubtractor with the
 # L1 vertex and the CMS window above (5 mm in the barrel, 13.3 mm in the
 # endcap). The constants were tuned with a narrower window (offline z
-# resolution x10); with the CMS window more pile-up tracks count as PV.
+# resolution x10) and re-checked with this one: MET resolution and the pile-up
+# neutral energy per region stay below RunPUPPI's, and re-running the tuning
+# finds no change that improves the jets without keeping more pile-up
+# neutrals, or that keeps fewer without costing jet resolution or efficiency.
+# The wider window passes more pile-up tracks as PV (weight 1), which no PUPPI
+# constant affects; they are most of the rise in minbias PUPPI multiplicity.
 ###############################################################################
 
 module RunL1TPUPPI L1TRunPUPPIBase {
