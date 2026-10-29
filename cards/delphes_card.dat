@@ -135,7 +135,6 @@ set ExecutionPath {
   L1TElectronFilter
   
   L1TPrimaryVertexFinder
-  L1TPrimaryVertexSelector
   L1TTrackPileUpSubtractor
   L1TRecoPuFilter
 
@@ -3025,6 +3024,14 @@ module PdgCodeFilter L1TElectronFilter {
 # collection with the chosen vertex first and IsPU = 0, so the track pile-up
 # subtraction and PUPPI below use it as the primary vertex. CMS defaults,
 # converted from cm to mm.
+#
+# Two one-entry arrays are written out (TreeWriter re-sorts vertex arrays by
+# SumPT2, so the order of "vertices" is lost there):
+#   fastHistoVertex  the L1 vertex as fastHisto reconstructs it: Z is the
+#                    pt-weighted mean z of the tracks in the winning window,
+#                    SumPT2 their saturated pt^2 sum. No generator information.
+#   primaryVertex    the generator interaction chosen as primary: truth Z and
+#                    Index (0 = the hard scatter). Not an L1 quantity.
 ###############################################################################
 
 module PrimaryVertexFinder L1TPrimaryVertexFinder {
@@ -3038,15 +3045,8 @@ module PrimaryVertexFinder L1TPrimaryVertexFinder {
   set BinWidth          1.5991504
   set WindowSize        3
   set OutputArray      vertices
-}
-
-# Keep only the chosen L1 vertex (IsPU == 0). TreeWriter re-sorts vertex
-# collections by SumPT2, so this is the only way to write out which vertex the
-# L1 chain used.
-module PdgCodeFilter L1TPrimaryVertexSelector {
-  set InputArray       L1TPrimaryVertexFinder/vertices
-  set OutputArray      primaryVertex
-  set RequireNotPileup true
+  set PrimaryVertexOutputArray primaryVertex
+  set FastHistoOutputArray     fastHistoVertex
 }
 
 module TrackPileUpSubtractor L1TTrackPileUpSubtractor {
@@ -9764,8 +9764,10 @@ module TreeWriter TreeWriter {
 
   # L1T
 
-  # the single L1 primary vertex (one entry per event)
-  add Branch L1TPrimaryVertexSelector/primaryVertex L1TVertex Vertex
+  # the L1 primary vertex, one entry per event in each: fastHisto's own
+  # reconstruction (Z), and the generator interaction it picked (truth Z, Index)
+  add Branch L1TPrimaryVertexFinder/fastHistoVertex L1TPrimaryVertex Vertex
+  add Branch L1TPrimaryVertexFinder/primaryVertex L1TPrimaryVertexTruth Vertex
 
   add Branch L1THCal/eflowTracks L1TEFlowTrack Track
   add Branch L1TECal/eflowPhotons L1TEFlowPhoton Tower

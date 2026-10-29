@@ -73,7 +73,12 @@ logging.basicConfig(
 # -- Mapping of logical collection names to Delphes branch prefixes -----------
 # Adapt as needed for your custom Delphes card.
 # If you want to add an index mapping, specify "constit_target" with the name
-# of the collection whose fUniqueIDs correspond to the ones in the Constituents array. 
+# of the collection whose fUniqueIDs correspond to the ones in the Constituents array.
+# Optional keys:
+#   "view"      "FullReco" or "L1T": read the collection in that view only
+#   "sort"      variable to sort objects by (default "PT"; None = keep order)
+#   "per_event" one object per event: write flat per-event values, not lists
+#   "columns"   {var: column name}, overriding the default column name
 COLLECTIONS = {
 
     # Calorimeter towers and detector (not used unless testing)
@@ -175,23 +180,48 @@ COLLECTIONS = {
     "MET":                  {"prefix": "MissingET",         "vars": ["MET", "Eta", "Phi"]},
     "PUPPIMET":             {"prefix": "PuppiMissingET",    "vars": ["MET", "Eta", "Phi"]},
     
-    "GenMissingET":         { "prefix": "GenMissingET",     "vars": ["MET", "Eta", "Phi"] },
+    # Gen info, the vertices and the event info have no L1T counterpart and are
+    # written once, with no FullReco/L1T tag in the column name
+    "GenMissingET":         { "prefix": "GenMissingET",     "vars": ["MET", "Eta", "Phi"], "view": "FullReco" },
 
     # Gen info
     "GenPart":              {"prefix": "Particle",          "vars": ["PT", "Eta", "Phi", "Mass",
                                                                      "PID", "M1", "M2", "D1", "D2",
-                                                                     "Status", "IsPU",]},# "X", "Y", "Z", "T"]},
-    "GenJetAK4":            {"prefix": "GenJet",            "vars": ["PT", "Eta", "Phi", "Mass"]},
-    "GenJetAK8":            {"prefix": "GenJetAK8",         "vars": ["PT", "Eta", "Phi", "Mass"]},
-    # Vertices
+                                                                     "Status", "IsPU",], "view": "FullReco"},# "X", "Y", "Z", "T"]},
+    "GenJetAK4":            {"prefix": "GenJet",            "vars": ["PT", "Eta", "Phi", "Mass"], "view": "FullReco"},
+    "GenJetAK8":            {"prefix": "GenJetAK8",         "vars": ["PT", "Eta", "Phi", "Mass"], "view": "FullReco"},
+    # Vertices: every generator interaction, the hard scatter (Index 0) and the
+    # pile-up, at its generator position. The offline chain takes Index 0 as its
+    # primary vertex.
     "Vertex": {
         "prefix": "Vertex",
         "vars": [
             "X", "Y", "Z", "T",
-            "Index", "NDF", 
+            "Index", "NDF",
             "SumPT2",
-            "Constituents"  
+            "Constituents"
     ],
+        "view": "FullReco",
+        "sort": "SumPT2",
+    },
+
+    # L1 primary vertex (L1TPrimaryVertexFinder), one per event, as flat columns.
+    # L1T_PV_FastHistoZ is what the L1 vertex finder reconstructs: the pt-weighted
+    # mean z of the tracks in its winning window. L1T_PV_TruthZ and
+    # L1T_PV_TruthIndex are the generator interaction it picked (Index 0 = the
+    # hard scatter; L1T_PV_TruthZ = Vertex_Z[Vertex_Index == L1T_PV_TruthIndex]),
+    # so they are truth, not L1 quantities.
+    "L1TPrimaryVertex": {
+        "prefix": "PrimaryVertex",
+        "vars": ["Z"],
+        "view": "L1T", "sort": None, "per_event": True,
+        "columns": {"Z": "L1T_PV_FastHistoZ"},
+    },
+    "L1TPrimaryVertexTruth": {
+        "prefix": "PrimaryVertexTruth",
+        "vars": ["Z", "Index"],
+        "view": "L1T", "sort": None, "per_event": True,
+        "columns": {"Z": "L1T_PV_TruthZ", "Index": "L1T_PV_TruthIndex"},
     },
 
     "EventInfo": {
@@ -220,11 +250,12 @@ COLLECTIONS = {
             "X2",      
             "ScalePDF",        
             "PDF1",          
-            "PDF2",            
+            "PDF2",
         ],
+        "view": "FullReco",
 },
 
-}   
+}
 
 # Add any mapping of branch names that differ between FullReco and L1T trees if
 # they are not simply the same with a different prefix.
@@ -236,12 +267,6 @@ L1T_RENAME = {
     # "L1TGenJet" not found
     # "L1TGenJetAK8" not found
 }
-
-# The L1T card writes only the L1 primary vertex (L1TPrimaryVertexSelector ->
-# L1TVertex, one entry per event). Only Z (truth z of the chosen interaction) and
-# Index (which interaction it is: 0 = signal) mean anything for it; X/Y/T/NDF/
-# SumPT2 are generator-level properties of that interaction, not L1 quantities.
-L1T_VERTEX_VARS = ["Z", "Index"]
 
 ################################################################################
 #                               CORE  UTILITIES                                #
@@ -341,10 +366,11 @@ def write_collection(tree, table_data, l1t=False):
     logging.info("Processing %s collections …", tag)
 
     for coll_key, cfg in COLLECTIONS.items():
+        if cfg.get("view", tag) != tag:
+            continue
+
         coll_prefix = cfg["prefix"]
         vars_ = cfg["vars"]
-        if l1t and coll_key == "Vertex":
-            vars_ = L1T_VERTEX_VARS
 
         # If we're on the L1T view, rewrite the Delphes collection prefix if needed
         tree_prefix = L1T_RENAME.get(coll_prefix, coll_prefix)
@@ -394,18 +420,18 @@ def write_collection(tree, table_data, l1t=False):
         # ---------------------------------------------------------------
         # Choose sort variable for this collection and sort
         # ---------------------------------------------------------------
-        if coll_key == "Vertex":
-            sort_var = "SumPT2"
-        else:
-            sort_var = "PT"
+        sort_var = cfg.get("sort", "PT")
 
-        if l1t and coll_key == "Vertex":
-            sorted_arrays = arrays  # single L1 PV per event; nothing to sort
+        if sort_var is None:
+            sorted_arrays = arrays
         elif sort_var not in arrays:
             logging.warning(f"Sort variable {sort_var} missing in {coll_key}, skipping sort.")
             sorted_arrays = arrays
         else:
             sorted_arrays = sort_collection(arrays, arrays[sort_var])
+
+        if cfg.get("per_event", False):
+            sorted_arrays = {k: ak.firsts(v) for k, v in sorted_arrays.items()}
 
         # ---------------------------------------------------------------
         # If this collection has a variable "Constituents", build index mapping
@@ -454,25 +480,33 @@ def write_collection(tree, table_data, l1t=False):
             if var in SAFE_UINT32:
                 arr = ak.values_astype(arr, np.uint32)
 
-            if coll_key.startswith("Gen"):
+            if var in cfg.get("columns", {}):
+                colname = cfg["columns"][var]
+                print(colname)
+
+            elif coll_key.startswith("Gen"):
                 colname = f"{coll_key}_{var}"
                 colname = colname.replace("Gen", "Gen_")
                 print(colname)
-            
-            #make separate collection also for vertex; the L1T view holds only
-            #the L1 primary vertex and must not overwrite the full-reco Vertex_*
+
+            #make separate collection also for vertex
             elif coll_key.startswith("Vertex"):
-                colname = f"L1T_PV_{var}" if l1t else f"Vertex_{var}"
+                colname = f"Vertex_{var}"
                 print(colname)
-            
+
             elif coll_key.startswith("EventInfo"):
                 colname = f"Event_{var}"
                 print(colname)
             else:
                 colname = f"{tag}_{coll_key}_{var}"
                 print(colname)
-                
-            table_data[colname] = arr            
+
+            # untagged names (Gen_*, Vertex_*, Event_*, columns) would let one
+            # view silently replace the other's column
+            if colname in table_data:
+                raise ValueError(f"{tag} {coll_key}.{var} would overwrite the column {colname}")
+
+            table_data[colname] = arr
             
     logging.info("Done with %s", tag)
 
