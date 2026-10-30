@@ -14,7 +14,7 @@ ARG ROOT_VERSION=6.36.02
 # Populated automatically by BuildKit (amd64, arm64, ...); the fallback keeps
 # the Dockerfile working with builders that do not set it.
 ARG TARGETARCH
-ARG COMMIT_HASH=046d85b593b7e59d40cfe11adecb5cf6ae31dd70
+ARG COMMIT_HASH=0926e6c33dda0d4a8cc89c075191535da7d3c95b
 # luaposix/luafilesystem are cloned from GitHub; pin them so upstream changes
 # can't break the build (luaposix v38 removed the build-aux/luke script used below).
 ARG LUAPOSIX_VERSION=v37.0
