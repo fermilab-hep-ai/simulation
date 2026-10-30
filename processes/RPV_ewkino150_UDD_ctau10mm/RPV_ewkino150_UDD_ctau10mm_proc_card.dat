@@ -1,0 +1,22 @@
+import model RPVMSSM_UFO_Wn1
+
+# Displaced light Higgsino multiplet, below the top threshold.
+#
+# lambda''_223 (c s b) rather than _323 (t s b): at m < m_top the t s b mode is
+# closed, and the c s b mode runs off the charm Yukawa, which is small enough
+# that the Higgsino is naturally long-lived.  Three jets per n1, two of them
+# heavy-flavour, all emerging from a displaced vertex.
+#
+# All four production modes of the multiplet, and nothing else: n2 and x1
+# cascade to n1 and every n1 decays to c s b in PYTHIA, from the decay table in
+# this point's _pythia8_card.dat.  The cascades do not fit in a MG5 decay
+# chain; see the S5c comment in make_signal_cards.py.
+
+generate    p p > n1 x1+
+add process p p > n1 x1-
+add process p p > n2 x1+
+add process p p > n2 x1-
+add process p p > n1 n2
+add process p p > x1+ x1-
+
+output _OUTDIR_

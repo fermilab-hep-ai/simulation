@@ -1,0 +1,3 @@
+# arguments for landscape.make_lhe; run.sh appends --nevents,
+# --seed and --out.  One line, comments ignored.
+--benchmark L-D1 --fast-branching

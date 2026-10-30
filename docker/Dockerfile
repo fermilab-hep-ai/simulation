@@ -319,6 +319,16 @@ RUN echo "convert model /usr/local/MG5_aMC_v${MG_VERSION_}/models/heft" | mg5_aM
     echo "convert model /usr/local/MG5_aMC_v${MG_VERSION_}/models/RPVMSSM_UFO" | mg5_aMC && \
     echo "install ninja" | mg5_aMC
 
+# RPVMSSM_UFO with a settable n1 width, which the RPV points need wherever n1
+# sits in a decay chain; see docker/RPVMSSM_UFO_Wn1.md.  Importing it once
+# writes the converted model next to it, so jobs never have to.
+ADD docker/RPVMSSM_UFO_Wn1.patch /tmp/RPVMSSM_UFO_Wn1.patch
+RUN cd /usr/local/MG5_aMC_v${MG_VERSION_}/models && \
+    cp -r RPVMSSM_UFO RPVMSSM_UFO_Wn1 && \
+    cd RPVMSSM_UFO_Wn1 && git apply /tmp/RPVMSSM_UFO_Wn1.patch && \
+    rm /tmp/RPVMSSM_UFO_Wn1.patch && \
+    echo "import model RPVMSSM_UFO_Wn1" | mg5_aMC
+
 # Add restriction
 ADD docker/restrict_ckm_no_b_mass.dat /usr/local/MG5_aMC_v${MG_VERSION_}/models/sm/restrict_ckm_no_b_mass.dat
 

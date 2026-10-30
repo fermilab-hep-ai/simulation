@@ -1,0 +1,51 @@
+! AIDA-Scout S5c shower card: m = 150 GeV, ctau(n1) = 10 mm.
+!
+! MG5 generates the Higgsino production only; Pythia applies every decay from
+! the table below, which make_signal_cards.py builds from EWKINO_RPV_WIDTHS and
+! EWKINO_CASCADE_WIDTHS.  lambda''_223 = 6.6489e-04.
+!
+! Proper ctau: n1 10 mm, n2 0.638 mm, x1 0.682 mm (Pythia takes
+! tau0 from mWidth).  meMode 100 is a fixed BR with phase-space kinematics.
+Main:numberOfEvents      = -1
+HEPMCoutput:file         = hepmc.gz
+!
+! The decay times of the states read from the LHE are drawn from their tau0
+! too: MG5 writes no VTIMUP for final-state particles, so with the default
+! (setLifetime = 1) the hard-process Higgsinos would decay at the origin.
+LesHouches:setLifetime   = 2
+!
+! The LHE header carries MG5's param card as SLHA.  Read, it would initialise
+! Pythia's SUSY sector and replace this table with Pythia's own widths.
+SLHA:readFrom            = 0
+!
+1000022:m0 = 150
+1000022:mWidth = 1.9730e-14
+1000022:mMin = 0.0
+1000022:mMax = 0.0
+1000022:isResonance = on
+1000022:mayDecay = on
+1000022:0:all = 1 0.50000 100 4 3 5
+1000022:1:all = 1 0.50000 100 -4 -3 -5
+
+1000023:m0 = 151
+1000023:mWidth = 3.0904e-13
+1000023:mMin = 0.0
+1000023:mMax = 0.0
+1000023:isResonance = on
+1000023:mayDecay = on
+1000023:0:all = 1 0.23330 100 1000022 12 -12
+1000023:1:all = 1 0.23330 100 1000022 14 -14
+1000023:2:all = 1 0.23330 100 1000022 16 -16
+1000023:3:all = 1 0.11702 100 1000022 11 -11
+1000023:4:all = 1 0.11702 100 1000022 13 -13
+1000023:5:all = 1 0.03302 100 4 3 5
+1000023:6:all = 1 0.03302 100 -4 -3 -5
+
+1000024:m0 = 151
+1000024:mWidth = 2.8930e-13
+1000024:mMin = 0.0
+1000024:mMax = 0.0
+1000024:isResonance = on
+1000024:mayDecay = on
+1000024:0:all = 1 0.50000 100 1000022 -11 12
+1000024:1:all = 1 0.50000 100 1000022 -13 14
