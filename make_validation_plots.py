@@ -312,10 +312,11 @@ def make_plots(rootfile, out_dir):
         "GenVertex_size"                  # truth vertices
     ])
 
+    # L1TPrimaryVertex and L1TPrimaryVertexTruth hold the one L1 primary vertex
+    # per event, not a vertex collection; their size is 1 by construction, so
+    # they do not belong here
     vtx_l1  = first_branch(t, [           # typical L1 names
-        "L1TPV_size",                     # Delphes phase-II L1T PV
         "L1Vertex_size",                  # alternative naming
-        "L1TVertex_size",                 # …
         "L1TrackerVertex_size"
     ])
 

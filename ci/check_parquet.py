@@ -28,7 +28,14 @@ REQUIRED_COLUMNS = [
     "L1T_MET_MET",
     "Gen_Part_PT",
     "Vertex_Z",
+    "L1T_PV_FastHistoZ",
+    "L1T_PV_TruthZ",
+    "L1T_PV_TruthIndex",
 ]
+
+# Per-event values (not lists) that every event must have: the L1 vertex
+# finder always reports one primary vertex.
+NO_NULLS = ["L1T_PV_FastHistoZ", "L1T_PV_TruthZ", "L1T_PV_TruthIndex"]
 
 # Per-event minimum number of entries.  PileUpMerger overlays Poisson(200)
 # interactions, each written as a Vertex, so far fewer than 200 vertices means
@@ -74,6 +81,13 @@ def main():
         if lowest < MIN_PER_EVENT[col]:
             errors.append(f"{col}: an event has {lowest} entries, "
                           f"expected at least {MIN_PER_EVENT[col]}")
+
+    for col in NO_NULLS:
+        if col in names:
+            nulls = pf.read(columns=[col])[col].null_count
+            print(f"  {col}: {nulls} events without a value")
+            if nulls:
+                errors.append(f"{col}: {nulls} events have no value")
 
     for err in errors:
         print(f"FAIL: {err}")
