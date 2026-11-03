@@ -1,0 +1,30 @@
+diff --git a/parameters.py b/parameters.py
+--- a/parameters.py
++++ b/parameters.py
+@@ -2257,6 +2257,14 @@ Wneu4 = Parameter(name = 'Wneu4',
+                   lhablock = 'DECAY',
+                   lhacode = [ 1000035 ])
+ 
++Wneu1 = Parameter(name = 'Wneu1',
++                 nature = 'external',
++                 type = 'real',
++                 value = 0.0,
++                 texname = '\\text{Wneu1}',
++                 lhablock = 'DECAY',
++                 lhacode = [ 1000022 ])
++
+ Wch1 = Parameter(name = 'Wch1',
+                  nature = 'external',
+                  type = 'real',
+diff --git a/particles.py b/particles.py
+--- a/particles.py
++++ b/particles.py
+@@ -69,7 +69,7 @@ n1 = Particle(pdg_code = 1000022,
+               spin = 2,
+               color = 1,
+               mass = Param.Mneu1,
+-              width = Param.ZERO,
++              width = Param.Wneu1,
+               texname = 'n1',
+               antitexname = 'n1',
+               charge = 0,

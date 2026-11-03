@@ -43,6 +43,9 @@ with `--platform linux/amd64`, at a significant runtime performance cost.
   image is rebuilt. It runs `run.sh` in the container for a few events and checks
   the resulting parquet with [`ci/check_parquet.py`](ci/check_parquet.py). It uses
   the freshly built image if there is one, and `:latest` otherwise.
+- **Landscape tests** when `landscape/` changes: the generator's unit tests
+  against the Julia reference fixtures, `python -m unittest discover -s
+  landscape/tests -t .` (needs only numpy).
 
 The same test can be run locally against any image:
 ```bash

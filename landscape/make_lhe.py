@@ -1,0 +1,124 @@
+"""
+Command-line entry point: write an LHE file for one benchmark.
+
+    python3 -m landscape.make_lhe --benchmark L-A --nevents 1000 --out sample.lhe
+
+Run it inside the container so LHAPDF is available; --approx-pdf drops the
+LHAPDF requirement but produces a sample whose rapidity distribution is only
+qualitatively right, and stamps that fact into the file header.
+"""
+
+import argparse
+import sys
+
+from dataclasses import replace
+
+from .params import SMConstants, BENCHMARKS, benchmark_entry
+from .generate import Generator
+from . import hardprocess as HP
+from . import lhe as LHE
+from . import lifetimes as LT
+from . import retune as RT
+
+
+def build_parser():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--benchmark", default="L-A", choices=sorted(BENCHMARKS))
+    p.add_argument("--nevents", type=int, default=1000)
+    p.add_argument("--out", required=True)
+    p.add_argument("--seed", type=int, default=1234)
+    p.add_argument("--spectrum-seed", type=int, default=None,
+                   help="override the benchmark's landscape realisation; the "
+                        "default is the seed recorded in params.BENCHMARKS")
+    p.add_argument("--nscalars", type=int, default=None,
+                   help="override N; changes the model, so only for studies")
+    p.add_argument("--sqrt-s", type=float, default=14000.0)
+    p.add_argument("--pdf", default="NNPDF23_lo_as_0130_qed")
+    p.add_argument("--approx-pdf", action="store_true",
+                   help="use the analytic gluon stand-in instead of LHAPDF")
+    p.add_argument("--fast-branching", action="store_true",
+                   help="vectorised branching path; ~5e-15 agreement with the "
+                        "reference implementation Tiers 1-2 validate")
+    p.add_argument("--no-bmeson-term", action="store_true",
+                   help="drop the Julia's dimensionally inconsistent B-meson "
+                        "production term, which otherwise dominates the "
+                        "direct-mode normalisation by ~3800 (see "
+                        "production._weights).  Affects L-A only.")
+    p.add_argument("--fragment", default=None,
+                   help="also write the matching Pythia settings here")
+    return p
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
+    model, mode, spectrum_seed = benchmark_entry(args.benchmark)
+    if args.spectrum_seed is not None:
+        spectrum_seed = args.spectrum_seed
+    if args.nscalars is not None:
+        model = replace(model, N=args.nscalars)
+
+    consts = SMConstants()
+
+    lum = (HP.ApproximateGluonLuminosity(sqrt_s=args.sqrt_s)
+           if args.approx_pdf
+           else HP.GluonLuminosity(args.pdf, 0, sqrt_s=args.sqrt_s))
+
+    gen = Generator(model, consts, spectrum_seed=spectrum_seed,
+                    mode=mode, luminosity=lum, sqrt_s=args.sqrt_s,
+                    seed=args.seed, fast_branching=args.fast_branching,
+                    include_bmeson=not args.no_bmeson_term)
+
+    xsec = gen.cross_section_pb()
+    br, _ = gen.higgs_constraint()
+    # The bound is quoted against the physical Higgs width; the Julia's own
+    # normalisation understates the BR by 2x (deviation 7d), so checking the
+    # constraint on that number would let a point through at 0.17.
+    br_phys = RT.br_h_to_bsm_physical(gen.spectrum, consts, model)
+    ok = br_phys <= RT.BR_BOUND * (1 + 1e-9)
+
+    comments = [
+        "landscape benchmark {0}, mode {1}".format(args.benchmark, mode),
+        "N = {0}, lambda = {1:g}, lambda' = {2:g}, M* = {3:g}, v2 = {4:g}".format(
+            model.N, model.lam, model.lam_prime, model.M_star, model.vev_2),
+        "spectrum seed {0}, event seed {1}".format(spectrum_seed, args.seed),
+        "gluon luminosity: " + lum.describe(),
+        "branching path: " + ("vectorised (fast)" if args.fast_branching
+                              else "reference implementation"),
+        "cross section {0:.6g} pb".format(xsec),
+        "  = {0:.4g} (h -> phi phi) + {1:.4g} (direct) + {2:.4g} (B meson) pb"
+        .format(*gen.cross_section_breakdown_pb()),
+        "BR(h -> BSM) = {0:.4g} (Julia normalisation, Gamma_bb(pole)*1.89)"
+        .format(br),
+        "BR(h -> BSM) = {0:.4g} (physical, Gamma_SM = {1:g} GeV) -- {2} the "
+        "{3:g} signal-strength bound".format(
+            br_phys, RT.GAMMA_H_SM_GEV,
+            "within" if ok else "VIOLATES", RT.BR_BOUND),
+    ]
+    comments.extend(
+        LT.format_summary(gen.spectrum, consts, model,
+                          label=args.benchmark).split("\n"))
+
+    if not ok:
+        sys.stderr.write("WARNING: physical BR(h -> BSM) = {0:.4g} exceeds the "
+                         "Higgs signal-strength bound {1:g}\n".format(
+                             br_phys, RT.BR_BOUND))
+
+    n = LHE.write_lhe(args.out, gen.events(args.nevents), xsec,
+                      sqrt_s=args.sqrt_s, comments=comments)
+
+    if args.fragment:
+        with open(args.fragment, "w") as fh:
+            fh.write("! Generated by landscape.make_lhe for {0}\n".format(
+                args.benchmark))
+            fh.write("Beams:LHEF = {0}\n".format(args.out))
+            fh.write(LHE.pythia_fragment())
+            fh.write("\n")
+
+    print("wrote {0} events to {1}".format(n, args.out))
+    print("  cross section {0:.6g} pb, BR(h->BSM) {1:.4g} (physical {2:.4g})"
+          .format(xsec, br, br_phys))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

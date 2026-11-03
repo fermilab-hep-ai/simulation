@@ -38,6 +38,7 @@ jobs:
   #                   run publishes, or :latest if the image did not change.
   #                   Empty when an unpublished image is built, because the
   #                   amd64 build job then tests it itself.
+  #   landscape       the landscape generator or its reference fixtures changed
   changes:
     name: decide what to run
     runs-on: ubuntu-latest
@@ -45,6 +46,7 @@ jobs:
       build: ${{ steps.plan.outputs.build }}
       publish: ${{ steps.plan.outputs.publish }}
       pipeline_image: ${{ steps.plan.outputs.pipeline_image }}
+      landscape: ${{ steps.plan.outputs.landscape }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,6 +68,9 @@ jobs:
               - 'processes/DYJetsToLL_13TeV-madgraphMLM-pythia8/**'
               - 'ci/**'
               - '.github/workflows/ci.yml'
+            landscape:
+              - 'landscape/**'
+              - '.github/workflows/ci.yml'
       - name: Plan
         id: plan
         env:
@@ -73,10 +78,15 @@ jobs:
           REF: ${{ github.ref }}
           IMAGE_CHANGED: ${{ steps.filter.outputs.image }}
           PIPELINE_CHANGED: ${{ steps.filter.outputs.pipeline }}
+          LANDSCAPE_CHANGED: ${{ steps.filter.outputs.landscape }}
         run: |
           build=false
           publish=false
           pipeline_image=
+          landscape=false
+          if [ "$EVENT" = workflow_dispatch ] || [ "$LANDSCAPE_CHANGED" = true ]; then
+            landscape=true
+          fi
           if [ "$EVENT" != pull_request ] && [ "$REF" = refs/heads/main ]; then
             publish=true
           fi
@@ -90,12 +100,33 @@ jobs:
           elif [ "$PIPELINE_CHANGED" = true ]; then
             pipeline_image="${IMAGE}:latest"
           fi
-          echo "build=${build} publish=${publish} pipeline_image=${pipeline_image:-(none)}"
+          echo "build=${build} publish=${publish} pipeline_image=${pipeline_image:-(none)} landscape=${landscape}"
           {
             echo "build=${build}"
             echo "publish=${publish}"
             echo "pipeline_image=${pipeline_image}"
+            echo "landscape=${landscape}"
           } >> "$GITHUB_OUTPUT"
+
+  # The landscape generator's Python port against the Julia reference fixtures
+  # in landscape/julia_ref.  It needs only numpy, so it runs on a stock runner
+  # rather than in the image.
+  landscape-tests:
+    name: landscape tests
+    needs: changes
+    if: needs.changes.outputs.landscape == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install numpy
+        run: pip install numpy
+      - name: Run the tests
+        run: python -m unittest discover -s landscape/tests -t . -v
 
   # Build each architecture on a native runner (no QEMU). When publishing, push
   # it by digest only; the merge job stitches the digests into one multi-arch
