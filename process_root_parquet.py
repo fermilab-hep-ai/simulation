@@ -56,6 +56,26 @@ SAFE_INT32 = {
     "PID"
 }
 
+# ---------------------------------------------------------------------
+# Generator-particle masses come out of Delphes in MeV, not GeV.
+#
+# Delphes' HepMC reader (DelphesHepMC2Reader::AnalyzeParticle) reads the
+# units line of the HepMC file and rescales each particle's four-momentum
+# to GeV, but copies the particle's generated mass unchanged, and
+# TreeWriter stores that copy as Particle.Mass. HepMC in the image is
+# built in MeV (docker/Dockerfile: -Dmomentum:STRING=MEV), so Pythia writes
+# "U MEV MM" in both generation modes, MadGraph's shower and main_signal.cc,
+# and every hard-scatter particle's Particle.Mass is in MeV. Pile-up
+# particles would not need converting: PileUpMerger sets their mass from
+# ROOT's PDG table, in GeV. The card's Particle branch (Delphes/allParticles)
+# holds only the hard scatter, but the conversion is limited to IsPU == 0
+# so that it stays right for a card that writes the pile-up too.
+# Left in MeV, any mass above 65.5 GeV
+# (W, Z, H, top) would also overflow the float16 cast below to inf.
+# ci/check_parquet.py checks the result against known masses.
+# ---------------------------------------------------------------------
+HEPMC_MASS_TO_GEV = 1e-3
+
 # Keep only the N highest‑pT PF candidates **per event** to control file size.
 MAX_PF_PER_EVENT = 1000 #128 for L1T 
 # PF_COLLECTION_KEYS = ()
@@ -79,6 +99,9 @@ logging.basicConfig(
 #   "sort"      variable to sort objects by (default "PT"; None = keep order)
 #   "per_event" one object per event: write flat per-event values, not lists
 #   "columns"   {var: column name}, overriding the default column name
+#   "hepmc_mass" Mass is Delphes' unscaled copy of the HepMC mass: convert
+#               the hard-scatter (IsPU == 0) entries to GeV, which needs
+#               IsPU in "vars" (see HEPMC_MASS_TO_GEV)
 COLLECTIONS = {
 
     # Calorimeter towers and detector (not used unless testing)
@@ -187,7 +210,8 @@ COLLECTIONS = {
     # Gen info
     "GenPart":              {"prefix": "Particle",          "vars": ["PT", "Eta", "Phi", "Mass",
                                                                      "PID", "M1", "M2", "D1", "D2",
-                                                                     "Status", "IsPU",], "view": "FullReco"},# "X", "Y", "Z", "T"]},
+                                                                     "Status", "IsPU",], "view": "FullReco",
+                             "hepmc_mass": True},# "X", "Y", "Z", "T"]},
     "GenJetAK4":            {"prefix": "GenJet",            "vars": ["PT", "Eta", "Phi", "Mass"], "view": "FullReco"},
     "GenJetAK8":            {"prefix": "GenJetAK8",         "vars": ["PT", "Eta", "Phi", "Mass"], "view": "FullReco"},
     # Vertices: every generator interaction, the hard scatter (Index 0) and the
@@ -309,6 +333,16 @@ def sort_collection(jagged_arrays, sort_key):
     # Apply permutation to all arrays
     return {k: v[idx] for k, v in jagged_arrays.items()}
 
+def hepmc_mass_to_gev(mass, is_pu):
+    """
+    Convert Delphes' Particle.Mass to GeV (see HEPMC_MASS_TO_GEV): the
+    hard-scatter entries are in the HepMC file's unit, MeV; the pile-up
+    entries (IsPU == 1) are already in GeV and are left as they are.
+    """
+    if is_pu is None:
+        raise ValueError("IsPU is needed to tell which generator masses to convert to GeV")
+    return ak.where(is_pu == 0, mass * HEPMC_MASS_TO_GEV, mass)
+
 def add_index_mapping(constituent_arr, fUniqueID_arr):
     """
     Given a jagged array of constituents (with fUniqueID values) and a jagged
@@ -416,6 +450,9 @@ def write_collection(tree, table_data, l1t=False):
         # Skip empty collections
         if not arrays:
             continue
+
+        if cfg.get("hepmc_mass", False) and "Mass" in arrays:
+            arrays["Mass"] = hepmc_mass_to_gev(arrays["Mass"], arrays.get("IsPU"))
 
         # ---------------------------------------------------------------
         # Choose sort variable for this collection and sort

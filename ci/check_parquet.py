@@ -8,12 +8,15 @@ Exits 1 unless the file
   * holds between 1 and N events (MLM-matched samples lose some to the veto),
   * has the full-reco, L1T, generator and vertex columns the converter writes,
   * has PUPPI candidates in both views and the PU 200 vertices in every event,
-    which is what goes missing when the pile-up overlay silently fails.
+    which is what goes missing when the pile-up overlay silently fails,
+  * has generator masses in GeV: finite, and the known masses of stable
+    particles.
 """
 
 import argparse
 import sys
 
+import numpy as np
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
@@ -45,6 +48,48 @@ MIN_PER_EVENT = {
     "L1T_PUPPIPart_PT": 1,
     "Vertex_Z": 100,
 }
+
+# Generator masses in GeV of stable particles, by |PID|.  Delphes leaves the
+# hard-scatter masses in MeV, the unit of the HepMC file, and
+# process_root_parquet.py converts them.  Every event has protons, the beams
+# if nothing else, so the check always has something to look at; the others
+# are checked when the sample has them.  The tolerance allows for the float16
+# the masses are stored as.
+GEN_MASS_COLUMNS = ("Gen_Part_Mass", "Gen_Part_PID")
+GEN_MASSES = {2212: 0.938272, 211: 0.139570, 13: 0.105658, 11: 0.000511}
+GEN_MASS_REQUIRED = (2212,)
+GEN_MASS_RTOL = 0.01
+
+
+def check_gen_masses(pf, names):
+    """Return the errors in the generator masses: not finite, or not in GeV."""
+    missing = [c for c in GEN_MASS_COLUMNS if c not in names]
+    if missing:
+        return ["missing columns: " + ", ".join(missing)]
+
+    table = pf.read(columns=list(GEN_MASS_COLUMNS))
+    mass = pc.list_flatten(table["Gen_Part_Mass"]).to_numpy().astype(np.float64)
+    pid = np.abs(pc.list_flatten(table["Gen_Part_PID"]).to_numpy())
+
+    errors = []
+    bad = ~np.isfinite(mass)
+    print(f"  Gen_Part_Mass: {mass.size} particles, {bad.sum()} not finite")
+    if bad.any():
+        errors.append(f"Gen_Part_Mass: {bad.sum()} values are not finite")
+
+    for code, expected in GEN_MASSES.items():
+        m = mass[pid == code]
+        if m.size == 0:
+            if code in GEN_MASS_REQUIRED:
+                errors.append(f"Gen_Part_Mass: no |PID| {code} particles to check")
+            continue
+        lo, hi = m.min(), m.max()
+        print(f"  Gen_Part_Mass of |PID| {code}: {lo:.6g} to {hi:.6g} GeV "
+              f"over {m.size} particles, expected {expected}")
+        if max(abs(lo - expected), abs(hi - expected)) > GEN_MASS_RTOL * expected:
+            errors.append(f"Gen_Part_Mass of |PID| {code}: {lo:.6g} to {hi:.6g}, "
+                          f"expected {expected} GeV")
+    return errors
 
 
 def main():
@@ -88,6 +133,8 @@ def main():
             print(f"  {col}: {nulls} events without a value")
             if nulls:
                 errors.append(f"{col}: {nulls} events have no value")
+
+    errors += check_gen_masses(pf, names)
 
     for err in errors:
         print(f"FAIL: {err}")
